@@ -1,0 +1,53 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Coverage
+*.out
+coverage.out
+coverage.html
+
+# Go workspace
+go.work.sum
+
+# Dependencies
+vendor/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+bin/
+dist/
+tmp/
+
+# Air
+.air.toml
+tmp/
+
+# Generated
+*.generated.go
+
+# Local config
+config.local.yaml
+config.local.yml
