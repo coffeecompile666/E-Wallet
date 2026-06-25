@@ -1,19 +1,32 @@
 package main
 
 import (
-	"net/http"
+	"app/identity"
+	"app/shared/database"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	db, err := database.Connect()
+	if err != nil {
+		panic(err)
+	}
+	err = database.Migrate(db)
+	if err != nil {
+		panic(err)
+	}
+
+	identityModule := identity.NewModule(db)
+	authenticationService := identityModule.AuthenticationService
+
 	router := gin.Default()
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
-	err := router.Run()
+
+	v1 := router.Group("/api/v1")
+
+	v1.POST("/signup", authenticationService.Signup)
+
+	err = router.Run()
 	if err != nil {
 		return
 	}
