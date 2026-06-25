@@ -1,0 +1,35 @@
+{
+  "name": "tinting-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.10",
+    "axios": "^1.17.0",
+    "lucide": "^1.3.0",
+    "lucide-react": "^1.17.0",
+    "next": "16.2.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "styled-components": "^6.4.2",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/styled-components": "^5.1.36",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "prettier": "^3.8.4",
+    "typescript": "^5"
+  },
+  "resolutions": {
+    "styled-components": "^6"
+  }
+}
