@@ -5,6 +5,7 @@ import (
 	"app/shared"
 	"app/shared/database"
 	"app/shared/logger"
+	"app/shared/middleware"
 	"fmt"
 	"os"
 
@@ -32,16 +33,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	identityModule := identity.NewModule(db)
-	authenticationService := identityModule.AuthenticationService
-
-	if shared.Configs.AppEnv == shared.Production {
+	if shared.Configs.AppEnv == shared.AppEnvDevelopment {
 		gin.SetMode(gin.ReleaseMode)
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
 	router := gin.New()
 	router.Use(
+		middleware.ValidateToken(),
 		gin.Logger(),
 		logger.Recovery())
 	err = router.SetTrustedProxies(nil)
@@ -50,8 +49,8 @@ func main() {
 	}
 
 	v1 := router.Group("/api/v1")
-
-	v1.POST("/signup", authenticationService.Signup)
+	identityModule := identity.NewModule(db)
+	identityModule.Boostrap(v1)
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)
 	err = router.Run(addr)

@@ -1,5 +1,7 @@
 package shared
 
+import "github.com/golang-jwt/jwt/v5"
+
 type Pagination[T any] struct {
 	Page  int `json:"page"`
 	Size  int `json:"size"`
@@ -14,3 +16,12 @@ type Cursor[T any] struct {
 }
 
 type Empty struct{}
+
+type AccessTokenClaims struct {
+	UserID uint `json:"user_id"`
+	jwt.RegisteredClaims
+}
+
+const (
+	ContextUserID = "UserID"
+)

@@ -18,13 +18,13 @@ var (
 	ErrForbidden               = Error{1004, 403, "forbidden"}
 	ErrInternal                = Error{1005, 500, "internal error"}
 	ErrUserIncorrectPassword   = Error{1006, 401, "user incorrect password"}
-	ErrUserInvalidStatus       = Error{1007, 400, "user invalid status"}
-	ErrOTPInvalid              = Error{1008, 400, "otp invalid"}
-	ErrOTPExpired              = Error{1009, 400, "otp expired"}
-	ErrInvalidRefreshToken     = Error{1010, 400, "invalid refresh token"}
-	ErrInvalidAccessToken      = Error{1011, 400, "invalid access token"}
-	ErrExpiredRefreshToken     = Error{1013, 400, "expired refresh token"}
-	ErrExpiredAccessToken      = Error{1012, 400, "expired access token"}
-	ErrTransactionPinLocked    = Error{1014, 400, "transaction pin locked"}
-	ErrTransactionPinIncorrect = Error{1015, 400, "transaction pin incorrect"}
+	ErrUserInvalidStatus       = Error{1007, 401, "user invalid status"}
+	ErrOTPInvalid              = Error{1008, 401, "otp invalid"}
+	ErrOTPExpired              = Error{1009, 401, "otp expired"}
+	ErrInvalidRefreshToken     = Error{1010, 401, "invalid refresh token"}
+	ErrInvalidAccessToken      = Error{1011, 401, "invalid access token"}
+	ErrExpiredRefreshToken     = Error{1013, 401, "expired refresh token"}
+	ErrExpiredAccessToken      = Error{1012, 401, "expired access token"}
+	ErrTransactionPinLocked    = Error{1014, 401, "transaction pin locked"}
+	ErrTransactionPinIncorrect = Error{1015, 401, "transaction pin incorrect"}
 )

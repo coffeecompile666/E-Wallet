@@ -1,10 +1,10 @@
 package shared
 
-type EnumAppEnv string
+type appEnv string
 
 const (
-	Production  EnumAppEnv = "production"
-	Development EnumAppEnv = "development"
+	AppEnvDevelopment appEnv = "production"
+	AppEnvProduction  appEnv = "development"
 )
 
 type config struct {
@@ -17,7 +17,7 @@ type config struct {
 	JWTSecret   string
 	AutoMigrate bool
 	Port        int
-	AppEnv      EnumAppEnv
+	AppEnv      appEnv
 }
 
 var Configs = config{
@@ -30,5 +30,5 @@ var Configs = config{
 	JWTSecret:   "ooooo332322@@@@@",
 	AutoMigrate: true,
 	Port:        8080,
-	AppEnv:      Production,
+	AppEnv:      AppEnvDevelopment,
 }

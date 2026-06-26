@@ -15,11 +15,6 @@ import (
 const RefreshTokenExpiresInHours = 30 * 24 * time.Hour
 const AccessTokenExpiresInHours = 24 * time.Hour
 
-type AccessTokenClaims struct {
-	UserID uint `json:"user_id"`
-	jwt.RegisteredClaims
-}
-
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -63,10 +58,10 @@ func NewSession(userID uint, userAgent, ip string) (*Session, TokenPair, error) 
 	}, TokenPair{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
 
-func VerifyAccessToken(tokenString string, secret string) (*AccessTokenClaims, error) {
+func VerifyAccessToken(tokenString string, secret string) (*shared.AccessTokenClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenString,
-		&AccessTokenClaims{},
+		&shared.AccessTokenClaims{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, shared.ErrInvalidAccessToken
@@ -91,7 +86,7 @@ func VerifyAccessToken(tokenString string, secret string) (*AccessTokenClaims, e
 		}
 	}
 
-	claims, ok := token.Claims.(*AccessTokenClaims)
+	claims, ok := token.Claims.(*shared.AccessTokenClaims)
 	if !ok || !token.Valid {
 		return nil, shared.ErrInvalidAccessToken
 	}
@@ -133,7 +128,7 @@ func generateRefreshToken() (string, error) {
 }
 
 func generateAccessToken(userID uint, secret string) (string, error) {
-	claims := AccessTokenClaims{
+	claims := shared.AccessTokenClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenExpiresInHours)),
