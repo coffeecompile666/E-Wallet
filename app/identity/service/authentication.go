@@ -10,7 +10,7 @@ type AuthenticationService struct {
 }
 
 func (s AuthenticationService) Signup(c *gin.Context) {
-	c.JSON(200, gin.H{"message": "Signup successful"})
+	c.JSON(200, gin.H{"message": "Signup successfulsss"})
 }
 
 func (s AuthenticationService) Signing(c *gin.Context) {

@@ -1,6 +1,13 @@
 package shared
 
-type Config struct {
+type EnumAppEnv string
+
+const (
+	Production  EnumAppEnv = "production"
+	Development EnumAppEnv = "development"
+)
+
+type config struct {
 	DbHost      string
 	DbPort      string
 	DbUser      string
@@ -9,9 +16,11 @@ type Config struct {
 	TimeZone    string
 	JWTSecret   string
 	AutoMigrate bool
+	Port        int
+	AppEnv      EnumAppEnv
 }
 
-var Configs Config = Config{
+var Configs = config{
 	DbHost:      "localhost",
 	DbPort:      "5432",
 	DbUser:      "ewallet",
@@ -20,4 +29,6 @@ var Configs Config = Config{
 	TimeZone:    "Asia/Ho_Chi_Minh",
 	JWTSecret:   "ooooo332322@@@@@",
 	AutoMigrate: true,
+	Port:        8080,
+	AppEnv:      Production,
 }
