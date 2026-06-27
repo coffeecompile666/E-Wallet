@@ -18,10 +18,11 @@ type Cursor[T any] struct {
 type Empty struct{}
 
 type AccessTokenClaims struct {
-	UserID uint `json:"user_id"`
+	UserID    uint `json:"user_id"`
+	SessionID uint `json:"session_id"`
 	jwt.RegisteredClaims
 }
 
-const (
-	ContextUserID = "UserID"
-)
+type Response[T any] struct {
+	Data T `json:"data"`
+}

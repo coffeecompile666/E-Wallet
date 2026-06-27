@@ -15,7 +15,7 @@ func NewMessageBus() *MessageBus {
 }
 
 func (m *MessageBus) Dispatch(event Event) {
-	for _, handler := range m.handlers[event.getNames()] {
+	for _, handler := range m.handlers[event.Name()] {
 		go func() {
 			e := handler(event)
 			if e != nil {

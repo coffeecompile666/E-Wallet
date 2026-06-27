@@ -63,24 +63,32 @@ func (u *User) SetPassword(password string) error {
 	return nil
 }
 
-func (u *User) VerifyPassword(password string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
+func (u *User) VerifyPassword(password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	if err != nil {
+		return shared.ErrUserIncorrectPassword
+	}
+	return nil
 }
 
-func (u *User) Activate() {
-	u.Status = UserStatusActive
-}
+func (u *User) VerifyActive() error {
+	if u.isPending() {
+		return shared.ErrUserNotActive
+	}
 
-func (u *User) Suspend() {
-	u.Status = UserStatusSuspended
-}
+	if u.isLocked() {
+		return shared.ErrUserLocked
+	}
 
-func (u *User) Lock() {
-	u.Status = UserStatusLocked
-}
+	if u.isSuspended() {
+		return shared.ErrUserSuspended
+	}
 
-func (u *User) IsActive() bool {
-	return u.Status == UserStatusActive
+	if u.isDeleted() {
+		return shared.ErrUserDeleted
+	}
+
+	return nil
 }
 
 func (u *User) ChangeStatus(status UserStatus) error {
@@ -89,4 +97,38 @@ func (u *User) ChangeStatus(status UserStatus) error {
 	}
 	u.Status = status
 	return nil
+}
+
+func (u *User) ConfirmSignup(password string) error {
+	if !u.isPending() {
+		return shared.ErrUserInvalidStatus
+	}
+	err := u.ChangeStatus(UserStatusActive)
+	if err != nil {
+		return err
+	}
+	if err := u.SetPassword(password); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (u *User) isPending() bool {
+	return u.Status == UserStatusPending
+}
+
+func (u *User) isActive() bool {
+	return u.Status == UserStatusActive
+}
+
+func (u *User) isSuspended() bool {
+	return u.Status == UserStatusSuspended
+}
+
+func (u *User) isLocked() bool {
+	return u.Status == UserStatusLocked
+}
+
+func (u *User) isDeleted() bool {
+	return u.Status == UserStatusDeleted
 }

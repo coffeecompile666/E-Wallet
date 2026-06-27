@@ -2,6 +2,7 @@ package model
 
 import (
 	"app/shared"
+	"regexp"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -10,6 +11,8 @@ import (
 
 const TransactionPinMaxFailedAttempts = 3
 const TransactionPinLockDuration = 10 * time.Minute
+
+var txPinRegex = regexp.MustCompile(`^\d{6}$`)
 
 type TransactionPin struct {
 	gorm.Model
@@ -21,14 +24,14 @@ type TransactionPin struct {
 }
 
 func NewTransactionPin(userID uint, Pin string) (*TransactionPin, error) {
-	pinHash, err := bcrypt.GenerateFromPassword([]byte(Pin), bcrypt.DefaultCost)
+	pinHash, err := HashTransactionPIN(Pin)
 	if err != nil {
 		return nil, shared.ErrCommon
 	}
 
 	return &TransactionPin{
 		UserID:         userID,
-		PinHash:        string(pinHash),
+		PinHash:        pinHash,
 		FailedAttempts: 0,
 	}, nil
 }
@@ -55,14 +58,27 @@ func (t *TransactionPin) Verify(pin string) error {
 }
 
 func (t *TransactionPin) Change(pin string) error {
-	pinHash, err := bcrypt.GenerateFromPassword([]byte(pin), bcrypt.DefaultCost)
+	pinHash, err := HashTransactionPIN(pin)
 	if err != nil {
 		return shared.ErrCommon
 	}
 
-	t.PinHash = string(pinHash)
+	t.PinHash = pinHash
 
 	return nil
+}
+
+func HashTransactionPIN(pin string) (string, error) {
+	if !txPinRegex.MatchString(pin) {
+		return "", shared.ErrTransactionPinInvalid
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(pin), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	return string(hash), nil
 }
 
 func (t *TransactionPin) incrementFailedAttempts() {

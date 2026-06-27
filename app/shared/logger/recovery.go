@@ -23,7 +23,7 @@ func Recovery() gin.HandlerFunc {
 				printStack()
 
 				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-					"message": "Internal server error",
+					"dto": "Internal server error",
 				})
 			}
 		}()

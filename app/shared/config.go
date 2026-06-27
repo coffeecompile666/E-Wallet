@@ -8,27 +8,29 @@ const (
 )
 
 type config struct {
-	DbHost      string
-	DbPort      string
-	DbUser      string
-	DbPass      string
-	DbName      string
-	TimeZone    string
-	JWTSecret   string
-	AutoMigrate bool
-	Port        int
-	AppEnv      appEnv
+	DbHost        string
+	DbPort        string
+	DbUser        string
+	DbPass        string
+	DbName        string
+	TimeZone      string
+	JWTSecret     string
+	AutoMigrate   bool
+	Port          int
+	AppEnv        appEnv
+	SessionSecret string
 }
 
 var Configs = config{
-	DbHost:      "localhost",
-	DbPort:      "5432",
-	DbUser:      "ewallet",
-	DbPass:      "ewallet_password",
-	DbName:      "ewallet_db ",
-	TimeZone:    "Asia/Ho_Chi_Minh",
-	JWTSecret:   "ooooo332322@@@@@",
-	AutoMigrate: true,
-	Port:        8080,
-	AppEnv:      AppEnvDevelopment,
+	DbHost:        "localhost",
+	DbPort:        "5432",
+	DbUser:        "ewallet",
+	DbPass:        "ewallet_password",
+	DbName:        "ewallet_db ",
+	TimeZone:      "Asia/Ho_Chi_Minh",
+	JWTSecret:     "ooooo332322@@@@@",
+	AutoMigrate:   true,
+	Port:          8080,
+	AppEnv:        AppEnvDevelopment,
+	SessionSecret: "secret",
 }

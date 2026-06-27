@@ -4,7 +4,6 @@ import (
 	"app/shared"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -33,20 +32,15 @@ type Session struct {
 	User             User `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE;"`
 }
 
-func NewSession(userID uint, userAgent, ip string) (*Session, TokenPair, error) {
-	accessToken, err := generateAccessToken(userID, shared.Configs.JWTSecret)
-	if err != nil {
-		return nil, TokenPair{}, shared.ErrCommon
-	}
-
+func NewSession(userID uint, userAgent, ip string) (*Session, string, error) {
 	refreshToken, err := generateRefreshToken()
 	if err != nil {
-		return nil, TokenPair{}, shared.ErrCommon
+		return nil, "", shared.ErrCommon
 	}
 
 	hashedRefreshToken, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, TokenPair{}, shared.ErrCommon
+		return nil, "", shared.ErrCommon
 	}
 
 	return &Session{
@@ -55,43 +49,7 @@ func NewSession(userID uint, userAgent, ip string) (*Session, TokenPair, error) 
 		IP:               ip,
 		ExpiredAt:        time.Now().Add(RefreshTokenExpiresInHours),
 		RefreshTokenHash: string(hashedRefreshToken),
-	}, TokenPair{AccessToken: accessToken, RefreshToken: refreshToken}, nil
-}
-
-func VerifyAccessToken(tokenString string, secret string) (*shared.AccessTokenClaims, error) {
-	token, err := jwt.ParseWithClaims(
-		tokenString,
-		&shared.AccessTokenClaims{},
-		func(token *jwt.Token) (interface{}, error) {
-			if token.Method != jwt.SigningMethodHS256 {
-				return nil, shared.ErrInvalidAccessToken
-			}
-			return []byte(secret), nil
-		},
-	)
-
-	if err != nil {
-		switch {
-		case errors.Is(err, jwt.ErrTokenExpired):
-			return nil, shared.ErrExpiredAccessToken
-
-		case errors.Is(err, jwt.ErrTokenMalformed),
-			errors.Is(err, jwt.ErrTokenSignatureInvalid),
-			errors.Is(err, jwt.ErrTokenInvalidClaims),
-			errors.Is(err, jwt.ErrTokenUnverifiable):
-			return nil, shared.ErrInvalidAccessToken
-
-		default:
-			return nil, shared.ErrInvalidAccessToken
-		}
-	}
-
-	claims, ok := token.Claims.(*shared.AccessTokenClaims)
-	if !ok || !token.Valid {
-		return nil, shared.ErrInvalidAccessToken
-	}
-
-	return claims, nil
+	}, refreshToken, nil
 }
 
 func (s *Session) VerifyRefreshToken(refreshToken string) error {
@@ -113,7 +71,31 @@ func (s *Session) VerifyRefreshToken(refreshToken string) error {
 }
 
 func (s *Session) Revoke() {
+	if s.RevokedAt != nil {
+		return
+	}
+
+	if isExpired(*s.RevokedAt) {
+		return
+	}
+
 	s.RevokedAt = new(time.Now())
+}
+
+func GenerateAccessToken(userID uint, sessionID uint) (string, error) {
+	claims := shared.AccessTokenClaims{
+		UserID:    userID,
+		SessionID: sessionID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenExpiresInHours)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString([]byte(shared.Configs.JWTSecret))
 }
 
 func generateRefreshToken() (string, error) {
@@ -127,17 +109,6 @@ func generateRefreshToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func generateAccessToken(userID uint, secret string) (string, error) {
-	claims := shared.AccessTokenClaims{
-		UserID: userID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(AccessTokenExpiresInHours)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(secret))
+func isExpired(t time.Time) bool {
+	return time.Now().After(t)
 }

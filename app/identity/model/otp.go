@@ -14,11 +14,14 @@ import (
 type OTPPurpose string
 
 const (
-	OTPPurposeRegister      OTPPurpose = "REGISTER"
-	OTPPurposeLogin         OTPPurpose = "LOGIN"
-	OTPPurposeResetPassword OTPPurpose = "RESET_PASSWORD"
-	OTPPurposeTransfer      OTPPurpose = "TRANSFER"
+	OTPPurposeRegister          OTPPurpose = "REGISTER"
+	OTPPurposeLogin             OTPPurpose = "LOGIN"
+	OTPPurposeResetPassword     OTPPurpose = "RESET_PASSWORD"
+	OTPPurposeTransfer          OTPPurpose = "TRANSFER"
+	OTPPurposeSetTransactionPIN OTPPurpose = "SET_TRANSACTION_PIN"
 )
+
+const OTPExpiredMinutes = 5
 
 type OTP struct {
 	gorm.Model
@@ -33,9 +36,8 @@ type OTP struct {
 }
 
 func NewOTP(
-	purpose OTPPurpose,
-	expiredMinutes int,
 	userID uint,
+	purpose OTPPurpose,
 ) (error, *OTP, string) {
 	code, err := generateOTP()
 	if err != nil {
@@ -51,12 +53,12 @@ func NewOTP(
 		&OTP{
 			Code:      hashedCode,
 			Purpose:   purpose,
-			ExpiredAt: time.Now().Add(time.Duration(expiredMinutes) * time.Minute),
+			ExpiredAt: time.Now().Add(time.Duration(OTPExpiredMinutes) * time.Minute),
 			UserID:    userID,
 		}, code
 }
 
-func (o *OTP) VerifyOTP(otp string) error {
+func (o *OTP) CanVerify(otp string) error {
 	if o.isExpired() {
 		return shared.ErrOTPExpired
 	}
@@ -69,8 +71,14 @@ func (o *OTP) VerifyOTP(otp string) error {
 		return shared.ErrOTPInvalid
 	}
 
-	o.VerifiedAt = new(time.Time)
+	return nil
+}
 
+func (o *OTP) Verify(otp string) error {
+	if err := o.CanVerify(otp); err != nil {
+		return err
+	}
+	o.VerifiedAt = new(time.Now())
 	return nil
 }
 

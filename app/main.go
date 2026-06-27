@@ -2,6 +2,7 @@ package main
 
 import (
 	"app/identity"
+	"app/messages"
 	"app/shared"
 	"app/shared/database"
 	"app/shared/logger"
@@ -9,6 +10,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,13 +46,19 @@ func main() {
 		middleware.ValidateToken(),
 		gin.Logger(),
 		logger.Recovery())
+
+	store := cookie.NewStore([]byte(shared.Configs.SessionSecret))
+	router.Use(sessions.Sessions("session", store))
+
 	err = router.SetTrustedProxies(nil)
 	if err != nil {
 		logger.Log.Error(ErrFailedStartServer, "err", err)
 	}
 
+	messageBus := messages.NewMessageBus()
+
 	v1 := router.Group("/api/v1")
-	identityModule := identity.NewModule(db)
+	identityModule := identity.NewModule(db, messageBus)
 	identityModule.Boostrap(v1)
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)

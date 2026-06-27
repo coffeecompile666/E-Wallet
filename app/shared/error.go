@@ -27,4 +27,16 @@ var (
 	ErrExpiredAccessToken      = Error{1012, 401, "expired access token"}
 	ErrTransactionPinLocked    = Error{1014, 401, "transaction pin locked"}
 	ErrTransactionPinIncorrect = Error{1015, 401, "transaction pin incorrect"}
+	ErrTransactionPinInvalid   = Error{1015, 401, "transaction pin invalid"}
+	ErrUserAlreadyExist        = Error{1016, 401, "user already exist"}
+	ErrUserNotFound            = Error{1017, 401, "user not found"}
+	ErrUserNotAllowed          = Error{1018, 401, "user not allowed"}
+	ErrPasswordNotMatch        = Error{1019, 401, "password not match"}
+	ErrUserNotActive           = Error{1020, 401, "user not active"}
+	ErrUserSuspended           = Error{1020, 401, "user suspended"}
+	ErrUserLocked              = Error{1021, 401, "user locked"}
+	ErrUserDeleted             = Error{1022, 401, "user deleted"}
+	ErrSessionNotFound         = Error{1023, 401, "session not found"}
+	ErrSessionExpired          = Error{1024, 401, "session expired"}
+	ErrSessionRevoked          = Error{1025, 401, "session revoked"}
 )
