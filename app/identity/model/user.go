@@ -72,7 +72,7 @@ func (u *User) VerifyPassword(password string) error {
 }
 
 func (u *User) VerifyActive() error {
-	if u.isPending() {
+	if u.IsPending() {
 		return shared.ErrUserNotActive
 	}
 
@@ -100,7 +100,7 @@ func (u *User) ChangeStatus(status UserStatus) error {
 }
 
 func (u *User) ConfirmSignup(password string) error {
-	if !u.isPending() {
+	if !u.IsPending() {
 		return shared.ErrUserInvalidStatus
 	}
 	err := u.ChangeStatus(UserStatusActive)
@@ -113,7 +113,7 @@ func (u *User) ConfirmSignup(password string) error {
 	return nil
 }
 
-func (u *User) isPending() bool {
+func (u *User) IsPending() bool {
 	return u.Status == UserStatusPending
 }
 

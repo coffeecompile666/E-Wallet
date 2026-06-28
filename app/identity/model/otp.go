@@ -27,7 +27,7 @@ type OTP struct {
 	gorm.Model
 
 	UserID     uint       `gorm:"not null;index"`
-	Code       string     `gorm:"size:6;not null"`
+	Code       string     `gorm:"size:255;not null"`
 	Purpose    OTPPurpose `gorm:"size:30;not null"`
 	ExpiredAt  time.Time  `gorm:"not null"`
 	VerifiedAt *time.Time

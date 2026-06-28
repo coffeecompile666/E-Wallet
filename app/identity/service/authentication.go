@@ -32,8 +32,21 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		user := &model.User{Email: body.Email}
 
-		if err := tx.Create(user).Error; err != nil {
-			return err
+		err := tx.Where("email = ?", user.Email).First(user).Error
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			if err := tx.Create(user).Error; err != nil {
+				return shared.ErrCommon
+			}
+		}
+
+		if err != nil {
+			logger.Log.Error(err.Error())
+			return shared.ErrCommon
+		}
+
+		if !user.IsPending() {
+			return shared.ErrUserAlreadyExist
 		}
 
 		err, otp, code := model.NewOTP(user.ID, model.OTPPurposeRegister)
@@ -41,6 +54,7 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 			return err
 		}
 		if err := tx.Create(otp).Error; err != nil {
+			logger.Log.Error(err.Error())
 			return shared.ErrCommon
 		}
 		otpID = otp.ID

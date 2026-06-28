@@ -29,7 +29,7 @@ var publicRoutes = map[httpMethod]map[string]bool{
 	post: {
 		"/api/v1/signup":                  true,
 		"/api/v1/confirm-signup":          true,
-		"/verify-otp":                     true,
+		"/api/v1/verify-otp":              true,
 		"/api/v1/signin":                  true,
 		"/api/v1/forgot-password":         true,
 		"/api/v1/confirm-forgot-password": true,
