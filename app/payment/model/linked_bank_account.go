@@ -5,7 +5,8 @@ import "gorm.io/gorm"
 type LinkedBankAccount struct {
 	gorm.Model
 
-	Name   string `gorm:"type:varchar(20);not null"`
-	Number string `gorm:"type:varchar(20);not null"`
-	UserID uint   `gorm:"type:bigint(20);not null"`
+	Name   string         `gorm:"type:varchar(20);not null"`
+	Number string         `gorm:"type:varchar(20);not null"`
+	UserID uint           `gorm:"type:bigint(20);not null"`
+	Bank   SupportedBanks `gorm:"type:varchar(20);not null"`
 }

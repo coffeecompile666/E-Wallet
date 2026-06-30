@@ -6,6 +6,19 @@ type Bank struct {
 	Icon string
 }
 
+type SupportedBanks string
+
+const (
+	VCB  SupportedBanks = "VCB"
+	TCB  SupportedBanks = "TCB"
+	BIDV SupportedBanks = "BIDV"
+	ACB  SupportedBanks = "ACB"
+	MB   SupportedBanks = "MB"
+	TPB  SupportedBanks = "TPB"
+	VPB  SupportedBanks = "VPB"
+	SCB  SupportedBanks = "SCB"
+)
+
 var FakeBanks = []Bank{
 	{
 		Code: "VCB",

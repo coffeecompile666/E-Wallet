@@ -24,3 +24,12 @@ type Payment struct {
 	Type       PaymentType   `gorm:"type:varchar(20);not null"`
 	Status     PaymentStatus `gorm:"type:varchar(20);not null"`
 }
+
+func NewPayment(amount int64, transferID uint, type_ PaymentType) *Payment {
+	return &Payment{
+		Amount:     amount,
+		TransferID: transferID,
+		Type:       type_,
+		Status:     PENDING,
+	}
+}
