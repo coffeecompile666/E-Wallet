@@ -3,10 +3,12 @@ package main
 import (
 	"app/identity"
 	"app/messages"
+	"app/payment"
 	"app/shared"
 	"app/shared/database"
 	"app/shared/logger"
 	"app/shared/middleware"
+	"app/wallet"
 	"fmt"
 	"os"
 
@@ -24,15 +26,16 @@ const (
 
 func main() {
 	logger.Init()
+	Log := logger.Log
 
 	db, err := database.Connect()
 	if err != nil {
-		logger.Log.Error(ErrFailedConnectToDb, "err", err)
+		Log.Error(ErrFailedConnectToDb, "err", err)
 		os.Exit(1)
 	}
 	err = database.Migrate(db)
 	if err != nil {
-		logger.Log.Error(ErrDbMigrationFailed, "err", err)
+		Log.Error(ErrDbMigrationFailed, "err", err)
 		os.Exit(1)
 	}
 
@@ -52,7 +55,7 @@ func main() {
 
 	err = router.SetTrustedProxies(nil)
 	if err != nil {
-		logger.Log.Error(ErrFailedStartServer, "err", err)
+		Log.Error(ErrFailedStartServer, "err", err)
 	}
 
 	messageBus := messages.NewMessageBus()
@@ -60,11 +63,14 @@ func main() {
 	v1 := router.Group("/api/v1")
 	identityModule := identity.NewModule(db, messageBus)
 	identityModule.Boostrap(v1)
+	paymentModule := payment.NewModule(db, messageBus)
+	walletModule := wallet.NewModule(db, messageBus, paymentModule)
+	walletModule.Bootstrap(v1)
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)
 	err = router.Run(addr)
 	if err != nil {
-		logger.Log.Error(ErrFailedStartServer, "err", err)
+		Log.Error(ErrFailedStartServer, "err", err)
 		os.Exit(1)
 	}
 }

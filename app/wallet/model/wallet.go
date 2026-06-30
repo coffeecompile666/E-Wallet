@@ -1,7 +1,7 @@
 package model
 
 import (
-	model2 "app/identity/model"
+	identityModel "app/identity/model"
 
 	"gorm.io/gorm"
 )
@@ -9,8 +9,8 @@ import (
 type Wallet struct {
 	gorm.Model
 
-	OwnerID    uint        `gorm:"not null;uniqueIndex"`
-	Owner      model2.User `gorm:"foreignKey:OwnerID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-	Balance    int64       `gorm:"not null;default:0"`
-	AmountLock int64       `gorm:"not null;default:0"`
+	OwnerID      uint               `gorm:"not null;uniqueIndex"`
+	Owner        identityModel.User `gorm:"foreignKey:OwnerID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
+	Balance      int64              `gorm:"not null;default:0"`
+	LockedAmount int64              `gorm:"not null;default:0"`
 }
