@@ -64,6 +64,7 @@ func main() {
 	identityModule := identity.NewModule(db, messageBus)
 	identityModule.Boostrap(v1)
 	paymentModule := payment.NewModule(db, messageBus)
+	paymentModule.Bootstrap(v1)
 	walletModule := wallet.NewModule(db, messageBus, paymentModule)
 	walletModule.Bootstrap(v1)
 

@@ -117,6 +117,10 @@ func (u *User) IsPending() bool {
 	return u.Status == UserStatusPending
 }
 
+func (u *User) IsAllowedCreateWallet() bool {
+	return u.isActive()
+}
+
 func (u *User) isActive() bool {
 	return u.Status == UserStatusActive
 }

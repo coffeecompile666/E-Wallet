@@ -9,10 +9,12 @@ import (
 type Transaction struct {
 	gorm.Model
 
-	OwnerID   uint `gorm:"not null"`
-	Amount    int64
-	Direction int64
-	Status    int64
+	OwnerID   uint        `gorm:"not null"`
+	Amount    int64       `gorm:"not null"`
+	Direction int64       `gorm:"not null"`
+	Status    int64       `gorm:"not null"`
+	WalletID  uint        `gorm:"not null"`
+	Wallet    Wallet      `gorm:"foreignkey:WalletID"`
 	Owner     model2.User `gorm:"foreignKey:OwnerID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 

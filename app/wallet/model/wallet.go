@@ -14,3 +14,11 @@ type Wallet struct {
 	Balance      int64              `gorm:"not null;default:0"`
 	LockedAmount int64              `gorm:"not null;default:0"`
 }
+
+func NewWallet(userID uint) *Wallet {
+	return &Wallet{
+		OwnerID:      userID,
+		Balance:      0,
+		LockedAmount: 0,
+	}
+}

@@ -10,9 +10,9 @@ type Pagination[T any] struct {
 }
 
 type Cursor[T any] struct {
-	Next  int `json:"next"`
-	Prev  int `json:"prev"`
-	Items []T
+	Start uint `json:"start"`
+	End   uint `json:"end"`
+	Items []T  `json:"items"`
 }
 
 type Empty struct{}
