@@ -2,6 +2,7 @@ package model
 
 import (
 	identityModel "app/identity/model"
+	"app/shared"
 
 	"gorm.io/gorm"
 )
@@ -21,4 +22,43 @@ func NewWallet(userID uint) *Wallet {
 		Balance:      0,
 		LockedAmount: 0,
 	}
+}
+
+func (w *Wallet) GetBalance() int64 {
+	return w.Balance
+}
+
+func (w *Wallet) Debit(amount int64) error {
+	if amount > w.Balance {
+		return shared.ErrBalanceNotEnough
+	}
+	w.Balance -= amount
+
+	return nil
+}
+
+func (w *Wallet) Credit(amount int64) {
+	w.Balance += amount
+}
+
+func (w *Wallet) Lock(amount int64) error {
+	if amount > w.Balance {
+		return shared.ErrBalanceNotEnough
+	}
+
+	w.LockedAmount += amount
+	w.Balance -= amount
+
+	return nil
+}
+
+func (w *Wallet) Unlock(amount int64) error {
+	if amount > w.LockedAmount {
+		return shared.ErrBalanceNotEnough
+	}
+
+	w.LockedAmount -= amount
+	w.Balance += amount
+
+	return nil
 }

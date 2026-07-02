@@ -26,7 +26,7 @@ func NewModule(db *gorm.DB, bus *messages.MessageBus) *Payment {
 func (p *Payment) Bootstrap(g *gin.RouterGroup) {
 	linkedAccountService := service.NewManageLinkedBankAccountService(p.DB, p.Bus)
 
-	g.GET("/", linkedAccountService.GetMe)
-	g.POST("/", linkedAccountService.Add)
-	g.DELETE("/:id", linkedAccountService.Remove)
+	g.GET("/payment", linkedAccountService.GetMe)
+	g.POST("/payment", linkedAccountService.Add)
+	g.DELETE("/payment/:id", linkedAccountService.Remove)
 }

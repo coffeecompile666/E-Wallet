@@ -44,4 +44,8 @@ var (
 	ErrLinkedBankAccountNotFound = Error{1028, 401, "linked bank account not found"}
 	ErrLinkedBankAccountExist    = Error{1029, 401, "linked bank account already exist"}
 	ErrMaxLinkedBankAccount      = Error{1030, 401, "max linked bank account reached"}
+	ErrBankAccountNotFound       = Error{1031, 401, "bank account not found"}
+	ErrBankAccountLocked         = Error{1032, 401, "bank account locked"}
+	ErrBankAccountNotAllowed     = Error{1033, 401, "bank account not allowed"}
+	ErrBalanceNotEnough          = Error{1034, 401, "balance not enough"}
 )

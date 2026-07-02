@@ -1,11 +1,9 @@
 package service
 
 import (
-	"app/identity/model"
 	"app/messages"
 	"app/shared"
 	model2 "app/wallet/model"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -22,41 +20,29 @@ func NewManageWalletService(db *gorm.DB, bus *messages.MessageBus) *ManageWallet
 	return &ManageWalletService{DB: db, Bus: bus}
 }
 
-func (mws *ManageWalletService) CreateWallet(c *gin.Context) {
+func (mws *ManageWalletService) GetWalletByID(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
-
-	err := mws.DB.Transaction(func(tx *gorm.DB) error {
-		var user model.User
-		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return shared.ErrUserNotFound
-			}
-			return shared.ErrCommon
-		}
-
-		var wallet *model2.Wallet
-		if err := tx.First(wallet, "user_id = ?", userID).Error; err != nil {
-			return nil
-		}
-
-		if !user.IsAllowedCreateWallet() {
-			return shared.ErrForbidden
-		}
-
-		wallet = model2.NewWallet(userID)
-		if err := tx.Create(wallet).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		return nil
-	})
-
+	walletID, err := validateWalletID(c.Param("wallet_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, err)
+		c.JSON(http.StatusBadRequest, shared.ErrBadRequest)
 		return
 	}
 
-	c.JSON(http.StatusCreated, shared.Empty{})
+	var wallet model2.Wallet
+
+	if err := mws.DB.First(&wallet, walletID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, shared.ErrNotFound)
+		return
+	}
+
+	if wallet.OwnerID != userID {
+		c.JSON(http.StatusForbidden, shared.ErrForbidden)
+		return
+	}
+
+	c.JSON(http.StatusOK, shared.Response[model2.Wallet]{
+		Data: wallet,
+	})
 }
 
 func (mws *ManageWalletService) GetTransactions(c *gin.Context) {

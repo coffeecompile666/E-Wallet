@@ -26,6 +26,6 @@ func NewModule(db *gorm.DB, bus *messages.MessageBus, payment *payment.Payment) 
 func (w *Wallet) Bootstrap(g *gin.RouterGroup) {
 	manageWalletService := service.NewManageWalletService(w.DB, w.Bus)
 
-	g.POST("/", manageWalletService.CreateWallet)
-	g.GET("/transaction", manageWalletService.GetTransactions)
+	g.GET("/wallet/:walletID", manageWalletService.GetWalletByID)
+	g.GET("/wallet/transaction", manageWalletService.GetTransactions)
 }
