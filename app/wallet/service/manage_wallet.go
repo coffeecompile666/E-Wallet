@@ -71,7 +71,7 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 		return
 	}
 
-	var txs []*model2.Transaction
+	var txs []*model2.Transfer
 	if err := mws.DB.
 		Where("wallet_id = ?", walletID).
 		Order("created_at DESC").
@@ -82,7 +82,7 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, shared.Cursor[*model2.Transaction]{
+	c.JSON(http.StatusOK, shared.Cursor[*model2.Transfer]{
 		Start: start,
 		End:   end,
 		Items: txs,

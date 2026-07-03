@@ -5,6 +5,7 @@ import (
 	"app/payment/model"
 	"app/shared"
 	"app/shared/logger"
+	"errors"
 	"time"
 
 	"gorm.io/gorm"
@@ -22,9 +23,16 @@ func NewGatewayService(db *gorm.DB, bus *messages.MessageBus) *GatewayService {
 type BankTransferCommand struct {
 	TransferID uint
 	Name       string
+	Bank       string
 	Number     string
 	Amount     int64
 	Note       string
+}
+
+type WithdrawalCommand struct {
+	TransferID uint
+	Amount     int64
+	AccountID  uint
 }
 
 type BankTransferSucceed struct {
@@ -81,7 +89,7 @@ func (g *GatewayService) TransferToAccount(data BankTransferCommand) error {
 	return nil
 }
 
-func (g *GatewayService) WithdrawalAccount(data BankTransferCommand) error {
+func (g *GatewayService) WithdrawalAccount(data WithdrawalCommand) error {
 	if err := g.verifyBankAccount(); err != nil {
 		return err
 	}
@@ -112,6 +120,17 @@ func (g *GatewayService) WithdrawalAccount(data BankTransferCommand) error {
 	}
 
 	return nil
+}
+
+func (g *GatewayService) GetAccountByID(tx *gorm.DB, id uint) (*model.LinkedBankAccount, error) {
+	var account model.LinkedBankAccount
+	if err := tx.First(&account, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, shared.ErrNotFound
+		}
+		return nil, shared.ErrCommon
+	}
+	return &account, nil
 }
 
 func (g *GatewayService) verifyBankAccount() error {

@@ -48,4 +48,6 @@ var (
 	ErrBankAccountLocked         = Error{1032, 401, "bank account locked"}
 	ErrBankAccountNotAllowed     = Error{1033, 401, "bank account not allowed"}
 	ErrBalanceNotEnough          = Error{1034, 401, "balance not enough"}
+	ErrTransactionInvalidStatus  = Error{1035, 401, "transaction invalid"}
+	ErrTransferAmountInvalid     = Error{1036, 401, "transfer amount invalid"}
 )
