@@ -4,6 +4,9 @@ import config from '@/config/config';
 
 type User = {
   id: number;
+  email: string;
+  name: string;
+  balance: number;
 };
 
 type AppState = {
@@ -31,7 +34,7 @@ export const useAppStore = create<AppState>()((set, getState) => ({
   },
 
   clearUser: () => {
-    set({});
+    set({ user: undefined });
   },
 
   setAppDialog: (appDialog) => {

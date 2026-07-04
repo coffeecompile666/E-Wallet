@@ -25,13 +25,13 @@ type BankTransferCommand struct {
 	Name       string
 	Bank       string
 	Number     string
-	Amount     int64
+	Amount     uint
 	Note       string
 }
 
 type WithdrawalCommand struct {
 	TransferID uint
-	Amount     int64
+	Amount     uint
 	AccountID  uint
 }
 

@@ -5,8 +5,8 @@ import "gorm.io/gorm"
 type Side string
 
 const (
-	Debit  Side = "debit"
-	Credit Side = "credit"
+	SideDebit  Side = "debit"
+	SideCredit Side = "credit"
 )
 
 type LedgerEntry struct {
@@ -17,5 +17,5 @@ type LedgerEntry struct {
 	JournalID uint
 	Journal   JournalEntry `gorm:"foreignKey:JournalID"`
 	Side      Side
-	Amount    uint64
+	Amount    uint
 }

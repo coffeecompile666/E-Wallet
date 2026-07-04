@@ -59,7 +59,7 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		}
 		otpID = otp.ID
 
-		event = dto.UserRegistered{Email: user.Email, OTP: code}
+		event = dto.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID}
 		return nil
 	})
 

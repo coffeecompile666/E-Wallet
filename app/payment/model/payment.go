@@ -19,13 +19,13 @@ const (
 
 type Payment struct {
 	gorm.Model
-	Amount     int64         `gorm:"type:bigint(20);not null"`
+	Amount     uint          `gorm:"type:bigint(20);not null"`
 	TransferID uint          `gorm:"not null"`
 	Type       PaymentType   `gorm:"type:varchar(20);not null"`
 	Status     PaymentStatus `gorm:"type:varchar(20);not null"`
 }
 
-func NewPayment(amount int64, transferID uint, type_ PaymentType) *Payment {
+func NewPayment(amount uint, transferID uint, type_ PaymentType) *Payment {
 	return &Payment{
 		Amount:     amount,
 		TransferID: transferID,

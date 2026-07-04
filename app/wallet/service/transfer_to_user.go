@@ -26,10 +26,10 @@ func NewTransferToUserService(db *gorm.DB, bus *messages.MessageBus) *TransferTo
 }
 
 type TransferToUserRequest struct {
-	walletID   uint
-	receiverID uint
-	amount     uint
-	note       string
+	WalletID   uint   `json:"wallet_id" binding:"required"`
+	ReceiverID uint   `json:"receiver_id" binding:"required"`
+	Amount     uint   `json:"amount" binding:"required"`
+	Note       string `json:"note"`
 }
 
 func (service *TransferToUserService) Execute(c *gin.Context) {
@@ -54,19 +54,19 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 		}
 
 		var receiver model.User
-		if err := service.DB.First(&receiver, userID).Error; err != nil {
+		if err := service.DB.First(&receiver, req.ReceiverID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return shared.ErrUserNotFound
 			}
 			return shared.ErrCommon
 		}
 
-		wallet, err := service.getWalletForUpdate(tx, userID, req.walletID)
+		wallet, err := service.getWalletForUpdate(tx, userID, req.WalletID)
 		if err != nil {
 			return err
 		}
 
-		if err := wallet.Debit(req.amount); err != nil {
+		if err := wallet.Debit(req.Amount); err != nil {
 			return err
 		}
 
@@ -74,12 +74,12 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return err
 		}
 
-		receiverWallet, err := service.getWalletForUpdate(tx, userID, receiver.ID)
+		receiverWallet, err := service.getWalletForUpdate(tx, req.ReceiverID, receiver.ID)
 		if err != nil {
 			return err
 		}
 
-		if err := receiverWallet.Credit(req.amount); err != nil {
+		if err := receiverWallet.Credit(req.Amount); err != nil {
 			return err
 		}
 
@@ -87,7 +87,18 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return err
 		}
 
-		// Todo: write to ledger
+		journalEntry := model2.NewJournalEntry()
+
+		journalEntry.AddLedgerEntry(wallet.Account.ID, req.Amount, model2.SideDebit)
+		journalEntry.AddLedgerEntry(receiverWallet.Account.ID, req.Amount, model2.SideCredit)
+
+		if err := journalEntry.Validate(); err != nil {
+			return err
+		}
+
+		if err := tx.Create(&journalEntry).Error; err != nil {
+			return shared.ErrCommon
+		}
 
 		return nil
 	})
@@ -108,6 +119,7 @@ func (service *TransferToUserService) getWalletForUpdate(tx *gorm.DB, userID uin
 			Strength: "UPDATE",
 		}).
 		Where("id = ? AND user_id = ?", walletID, userID).
+		Preload("Account").
 		First(&wallet).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, shared.ErrNotFound

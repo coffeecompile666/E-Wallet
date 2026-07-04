@@ -28,7 +28,7 @@ type Transfer struct {
 	gorm.Model
 
 	OwnerID  uint        `gorm:"not null"`
-	Amount   int64       `gorm:"not null"`
+	Amount   uint        `gorm:"not null"`
 	Type     txType      `gorm:"not null"`
 	Status   status      `gorm:"not null"`
 	WalletID uint        `gorm:"not null"`
@@ -36,7 +36,7 @@ type Transfer struct {
 	Owner    model2.User `gorm:"foreignKey:OwnerID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 }
 
-func NewTransfer(amount int64, ownerID uint, walletID uint, _type txType) *Transfer {
+func NewTransfer(amount uint, ownerID uint, walletID uint, _type txType) *Transfer {
 	return &Transfer{
 		Amount:   amount,
 		Type:     _type,
@@ -52,4 +52,8 @@ func (t *Transfer) SetStatusCompleted() error {
 	}
 	t.Status = COMPLETED
 	return nil
+}
+
+func (t *Transfer) IsComplete() bool {
+	return t.Status == COMPLETED || t.Status == FAILED
 }

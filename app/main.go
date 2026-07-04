@@ -2,8 +2,11 @@ package main
 
 import (
 	"app/identity"
+	"app/identity/dto"
 	"app/messages"
 	"app/payment"
+	"app/payment/model"
+	"app/payment/service"
 	"app/shared"
 	"app/shared/database"
 	"app/shared/logger"
@@ -67,6 +70,17 @@ func main() {
 	paymentModule.Bootstrap(v1)
 	walletModule := wallet.NewModule(db, messageBus, paymentModule)
 	walletModule.Bootstrap(v1)
+
+	messages.Register(messageBus, dto.UserRegistered{}.Name(), func(e dto.UserRegistered) error {
+		return walletModule.WalletHandler.HandleCreateWallet(e.UserID)
+	})
+
+	messages.Register(messageBus, service.BankWithdrawalSucceed{}.Name(), func(e service.BankWithdrawalSucceed) error {
+		if e.Status == model.SUCCESS {
+			return walletModule.WalletHandler.HandleDeposit(e.TransferID)
+		}
+		return nil
+	})
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)
 	err = router.Run(addr)

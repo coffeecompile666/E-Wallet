@@ -1,8 +1,9 @@
 package dto
 
 type UserRegistered struct {
-	Email string
-	OTP   string
+	Email  string
+	OTP    string
+	UserID uint
 }
 
 func (u UserRegistered) Name() string {

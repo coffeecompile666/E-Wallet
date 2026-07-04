@@ -27,12 +27,13 @@ func NewDepositService(db *gorm.DB, bus *messages.MessageBus, payment *payment.P
 
 type depositRequest struct {
 	walletID      uint
-	amount        int64
+	amount        uint
 	bankAccountID uint
 }
 
 func (d *DepositService) Deposit(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
+	var transferID uint
 
 	err := d.DB.Transaction(func(tx *gorm.DB) error {
 		req := depositRequest{}
@@ -89,6 +90,8 @@ func (d *DepositService) Deposit(c *gin.Context) {
 			return err
 		}
 
+		transferID = transfer.ID
+
 		return nil
 	})
 
@@ -97,5 +100,5 @@ func (d *DepositService) Deposit(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, shared.Empty{})
+	c.JSON(http.StatusOK, shared.Response[uint]{Data: transferID})
 }

@@ -9,11 +9,17 @@ const (
 	Asset     AccountType = "asset"
 )
 
+type SystemAccountCode string
+
+const (
+	SystemBankAssetCode SystemAccountCode = "system_bank_asset"
+)
+
 type Account struct {
 	gorm.Model
 
 	WalletID *uint
-	Wallet   *Wallet     `gorm:"foreignKey:WalletID"`
-	Code     string      `gorm:"uniqueIndex;not null"`
-	Type     AccountType `gorm:"not null"`
+	Wallet   *Wallet            `gorm:"foreignKey:WalletID"`
+	Code     *SystemAccountCode `gorm:"uniqueIndex"`
+	Type     AccountType        `gorm:"not null"`
 }

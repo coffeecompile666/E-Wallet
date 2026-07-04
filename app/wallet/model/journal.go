@@ -1,6 +1,10 @@
 package model
 
-import "gorm.io/gorm"
+import (
+	"app/shared"
+
+	"gorm.io/gorm"
+)
 
 type JournalEntry struct {
 	gorm.Model
@@ -15,5 +19,33 @@ func NewJournalEntry() *JournalEntry {
 	}
 }
 
-func (j *JournalEntry) AddLedgerEntry(account Account, amount uint) {
+func (j *JournalEntry) AddLedgerEntry(accountID uint, amount uint, side Side) {
+	ledgerEntry := LedgerEntry{
+		AccountID: accountID,
+		Amount:    amount,
+		Side:      side,
+	}
+	j.LedgerEntries = append(j.LedgerEntries, ledgerEntry)
+}
+
+func (j *JournalEntry) Validate() error {
+	if len(j.LedgerEntries) < 2 {
+		return shared.ErrJournalEntryMustHaveTwo
+	}
+
+	debit := 0
+	credit := 0
+
+	for _, ledgerEntry := range j.LedgerEntries {
+		if ledgerEntry.Side == SideDebit {
+			debit += int(ledgerEntry.Amount)
+		} else if ledgerEntry.Side == SideCredit {
+			credit += int(ledgerEntry.Amount)
+		}
+	}
+
+	if debit != credit {
+		return shared.ErrJournalEntryDebitCreditMustBeEqual
+	}
+	return nil
 }
