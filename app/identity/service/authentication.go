@@ -33,7 +33,6 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		user := &model.User{Email: body.Email}
 
 		err := tx.Where("email = ?", user.Email).First(user).Error
-
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if err := tx.Create(user).Error; err != nil {
 				return shared.ErrCommon
@@ -63,13 +62,17 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		return nil
 	})
 
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		c.JSON(http.StatusBadRequest, shared.ErrUserAlreadyExist)
-		return
-	}
-
 	if err != nil {
-		c.JSON(http.StatusBadRequest, shared.ErrCommon)
+		var sharedErr shared.Error
+		if errors.As(err, &sharedErr) {
+			c.JSON(sharedErr.Status, sharedErr)
+			return
+		}
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			c.JSON(shared.ErrUserAlreadyExist.Status, shared.ErrUserAlreadyExist)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, shared.ErrCommon)
 		return
 	}
 
