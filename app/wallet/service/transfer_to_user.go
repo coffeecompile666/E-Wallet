@@ -32,6 +32,16 @@ type TransferToUserRequest struct {
 	Note       string `json:"note"`
 }
 
+type TransferToUserSuccess struct {
+	WalletID         uint
+	ReceiverWalletID uint
+	TransferID       uint
+}
+
+func (t TransferToUserSuccess) Name() string {
+	return "wallet.transfer_to_user_success"
+}
+
 func (service *TransferToUserService) Execute(c *gin.Context) {
 	userID := c.MustGet("UserID").(uint)
 
@@ -99,6 +109,12 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 		if err := tx.Create(&journalEntry).Error; err != nil {
 			return shared.ErrCommon
 		}
+
+		service.Bus.Dispatch(TransferToUserSuccess{
+			WalletID:         wallet.ID,
+			ReceiverWalletID: receiverWallet.ID,
+			TransferID:       journalEntry.ID,
+		})
 
 		return nil
 	})

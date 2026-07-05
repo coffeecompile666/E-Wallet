@@ -1,5 +1,5 @@
 const API_CONFIG = {
-  api_url: 'v1.api',
+  api_url: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
 } as const;
 
 for (const configKey in API_CONFIG) {

@@ -25,9 +25,9 @@ func NewWithdrawalService(db *gorm.DB, paymentService *payment.Payment) *Withdra
 }
 
 type withdrawalRequest struct {
-	walletID      uint
-	amount        uint
-	bankAccountID uint
+	WalletID      uint `json:"wallet_id"`
+	Amount        uint `json:"amount"`
+	BankAccountID uint `json:"bank_account_id"`
 }
 
 func (w *WithdrawalService) Withdraw(c *gin.Context) {
@@ -55,7 +55,7 @@ func (w *WithdrawalService) Withdraw(c *gin.Context) {
 			Clauses(clause.Locking{
 				Strength: "UPDATE",
 			}).
-			Where("id = ? AND user_id = ?", req.walletID, userID).
+			Where("id = ? AND user_id = ?", req.WalletID, userID).
 			First(&wallet).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return shared.ErrNotFound
@@ -63,7 +63,7 @@ func (w *WithdrawalService) Withdraw(c *gin.Context) {
 			return shared.ErrCommon
 		}
 
-		if err := wallet.Lock(req.amount); err != nil {
+		if err := wallet.Lock(req.Amount); err != nil {
 			return err
 		}
 
@@ -72,14 +72,14 @@ func (w *WithdrawalService) Withdraw(c *gin.Context) {
 		}
 
 		// create transfer
-		transfer := model2.NewTransfer(req.amount, userID, req.walletID, model2.WITHDRAWAL)
+		transfer := model2.NewTransfer(req.Amount, userID, req.WalletID, model2.WITHDRAWAL)
 		if err := tx.Create(&transfer).Error; err != nil {
 			return shared.ErrCommon
 		}
 
 		// call payment gateway
 		linkedAccount := model3.LinkedBankAccount{}
-		if err := tx.Where("id = ? AND user_id = ?", req.bankAccountID, userID).First(&linkedAccount).Error; err != nil {
+		if err := tx.Where("id = ? AND user_id = ?", req.BankAccountID, userID).First(&linkedAccount).Error; err != nil {
 			return shared.ErrLinkedBankAccountNotFound
 		}
 
@@ -88,7 +88,7 @@ func (w *WithdrawalService) Withdraw(c *gin.Context) {
 			Note:       "Withdrawal",
 			Bank:       string(linkedAccount.Bank),
 			Number:     linkedAccount.Number,
-			Amount:     req.amount,
+			Amount:     req.Amount,
 			Name:       linkedAccount.Name,
 		}
 

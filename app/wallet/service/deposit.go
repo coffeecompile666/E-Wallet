@@ -26,9 +26,9 @@ func NewDepositService(db *gorm.DB, bus *messages.MessageBus, payment *payment.P
 }
 
 type depositRequest struct {
-	walletID      uint
-	amount        uint
-	bankAccountID uint
+	WalletID      uint `json:"wallet_id"`
+	Amount        uint `json:"amount"`
+	BankAccountID uint `json:"bank_account_id"`
 }
 
 func (d *DepositService) Deposit(c *gin.Context) {
@@ -58,7 +58,7 @@ func (d *DepositService) Deposit(c *gin.Context) {
 			Clauses(clause.Locking{
 				Strength: "UPDATE",
 			}).
-			Where("id = ? AND user_id = ?", req.walletID, userID).
+			Where("id = ? AND user_id = ?", req.WalletID, userID).
 			First(&wallet).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return shared.ErrNotFound
@@ -66,13 +66,13 @@ func (d *DepositService) Deposit(c *gin.Context) {
 			return shared.ErrCommon
 		}
 
-		transfer := model.NewTransfer(req.amount, userID, wallet.ID, model.DEPOSIT)
+		transfer := model.NewTransfer(req.Amount, userID, wallet.ID, model.DEPOSIT)
 
 		if err := tx.Create(&transfer).Error; err != nil {
 			return shared.ErrCommon
 		}
 
-		account, err := d.Payment.Gateway.GetAccountByID(tx, req.bankAccountID)
+		account, err := d.Payment.Gateway.GetAccountByID(tx, req.BankAccountID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return shared.ErrBankAccountNotFound
@@ -84,7 +84,7 @@ func (d *DepositService) Deposit(c *gin.Context) {
 
 		if err := d.Payment.Gateway.WithdrawalAccount(service.WithdrawalCommand{
 			TransferID: transfer.ID,
-			Amount:     req.amount,
+			Amount:     req.Amount,
 			AccountID:  account.ID,
 		}); err != nil {
 			return err

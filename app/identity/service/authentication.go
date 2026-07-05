@@ -40,7 +40,7 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 			}
 		}
 
-		if err != nil {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Log.Error(err.Error())
 			return shared.ErrCommon
 		}
@@ -137,6 +137,11 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 		if err := tx.Save(otp).Error; err != nil {
 			return err
 		}
+
+		s.MessageBus.Dispatch(dto.UserSignupSuccess{
+			UserID: user.ID,
+			Email:  user.Email,
+		})
 
 		return nil
 	})

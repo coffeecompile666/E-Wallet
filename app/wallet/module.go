@@ -21,7 +21,7 @@ func NewModule(db *gorm.DB, bus *messages.MessageBus, payment *payment.Payment) 
 		DB:            db,
 		Bus:           bus,
 		Payment:       payment,
-		WalletHandler: service.NewWalletHandlerService(db),
+		WalletHandler: service.NewWalletHandlerService(db, bus),
 	}
 }
 
@@ -31,7 +31,7 @@ func (w *Wallet) Bootstrap(g *gin.RouterGroup) {
 	withdrawalService := service.NewWithdrawalService(w.DB, w.Payment)
 	transferOutService := service.NewTransferOutService(w.DB, w.Bus, w.Payment)
 
-	g.GET("/wallet/:walletID", manageWalletService.GetWalletByID)
+	g.GET("/wallet/:wallet_id", manageWalletService.GetWalletByID)
 	g.GET("/wallet/transaction", manageWalletService.GetTransactions)
 	g.POST("/wallet/deposit", depositService.Deposit)
 	g.POST("/wallet/withdrawal", withdrawalService.Withdraw)

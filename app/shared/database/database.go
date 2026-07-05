@@ -33,7 +33,6 @@ func Migrate(db *gorm.DB) error {
 			model.Session{},
 			model.TransactionPin{},
 			model.OTP{},
-			model.Session{},
 			model2.LinkedBankAccount{},
 			model2.Payment{},
 			model3.Account{},

@@ -32,8 +32,10 @@ type config struct {
 var Configs config
 
 func init() {
-	// Tải file .env cục bộ nếu có để đưa vào biến môi trường
+	// Tải file .env từ nhiều vị trí có thể để đảm bảo hoạt động trong mọi môi trường chạy (GoLand, Terminal, v.v.)
 	loadEnv(".env")
+	loadEnv("app/.env")
+	loadEnv("../.env")
 
 	Configs = config{
 		DbHost:        getEnv("DB_HOST", "localhost"),

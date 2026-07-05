@@ -8,6 +8,7 @@ import (
 	"app/payment/model"
 	"app/payment/service"
 	"app/wallet"
+	service3 "app/wallet/service"
 )
 
 type Handler struct {
@@ -22,12 +23,14 @@ func NewHandler(walletServices *wallet.Wallet, identityServices *identity.Module
 }
 
 func (h *Handler) Register() {
-	// Khi user đăng ký: tạo ví + gửi OTP xác nhận
+	// Khi user đăng ký gửi OTP xác nhận
 	messages.Register(h.bus, dto.UserRegistered{}.Name(), func(e dto.UserRegistered) error {
-		if err := h.walletServices.WalletHandler.HandleCreateWallet(e.UserID); err != nil {
-			return err
-		}
+
 		return h.notificationService.SendRegisterOTP(e.Email, e.UserName, e.OTP)
+	})
+
+	messages.Register(h.bus, dto.UserSignupSuccess{}.Name(), func(e dto.UserSignupSuccess) error {
+		return h.walletServices.WalletHandler.HandleCreateWallet(e.UserID)
 	})
 
 	// Khi user yêu cầu đặt lại mật khẩu: gửi OTP reset password
@@ -54,5 +57,21 @@ func (h *Handler) Register() {
 			return h.walletServices.WalletHandler.HandleTransferOut(e.TransferID)
 		}
 		return nil
+	})
+
+	messages.Register(h.bus, service3.WithdrawalSuccess{}.Name(), func(e service3.WithdrawalSuccess) error {
+		return h.notificationService.NotifyWithdrawalSuccess(e)
+	})
+
+	messages.Register(h.bus, service3.TransferOutSuccess{}.Name(), func(e service3.TransferOutSuccess) error {
+		return h.notificationService.NotifyTransferOutSuccess(e)
+	})
+
+	messages.Register(h.bus, service3.TransferToUserSuccess{}.Name(), func(e service3.TransferToUserSuccess) error {
+		return h.notificationService.NotyTransferToUserSuccess(e)
+	})
+
+	messages.Register(h.bus, service3.DepositSuccess{}.Name(), func(e service3.DepositSuccess) error {
+		return h.notificationService.NotifyDepositSuccess(e)
 	})
 }

@@ -30,3 +30,12 @@ type UserSetTXPINRequested struct {
 func (u UserSetTXPINRequested) Name() string {
 	return "user.set_txpin_requested"
 }
+
+type UserSignupSuccess struct {
+	UserID uint
+	Email  string
+}
+
+func (u UserSignupSuccess) Name() string {
+	return "user.signup_success"
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"app/identity/model"
+	"app/messages"
 	"app/shared"
 	model2 "app/wallet/model"
 	"errors"
@@ -11,11 +12,40 @@ import (
 )
 
 type WalletHandlerService struct {
-	DB *gorm.DB
+	DB  *gorm.DB
+	Bus *messages.MessageBus
 }
 
-func NewWalletHandlerService(db *gorm.DB) *WalletHandlerService {
-	return &WalletHandlerService{DB: db}
+func NewWalletHandlerService(db *gorm.DB, bus *messages.MessageBus) *WalletHandlerService {
+	return &WalletHandlerService{DB: db, Bus: bus}
+}
+
+type DepositSuccess struct {
+	WalletID   uint
+	TransferID uint
+}
+
+func (d DepositSuccess) Name() string {
+	return "wallet.deposit_success"
+}
+
+type WithdrawalSuccess struct {
+	WalletID   uint
+	TransferID uint
+}
+
+func (w WithdrawalSuccess) Name() string {
+	return "wallet.withdrawal_success"
+}
+
+type TransferOutSuccess struct {
+	WalletID       uint
+	TransferID     uint
+	JournalEntryID uint
+}
+
+func (t TransferOutSuccess) Name() string {
+	return "wallet.transfer_out_success"
 }
 
 func (h *WalletHandlerService) HandleDeposit(transferID uint) error {
@@ -69,6 +99,12 @@ func (h *WalletHandlerService) HandleDeposit(transferID uint) error {
 		if err := tx.Create(journalEntry).Error; err != nil {
 			return shared.ErrCommon
 		}
+
+		// Send notification
+		h.Bus.Dispatch(DepositSuccess{
+			WalletID:   wallet.ID,
+			TransferID: transfer.Amount,
+		})
 
 		return nil
 	})
@@ -129,6 +165,11 @@ func (h *WalletHandlerService) HandleWithdrawal(transferID uint) error {
 			return shared.ErrCommon
 		}
 
+		h.Bus.Dispatch(WithdrawalSuccess{
+			WalletID:   wallet.ID,
+			TransferID: transfer.ID,
+		})
+
 		return nil
 	})
 
@@ -187,6 +228,12 @@ func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
 		if err := tx.Create(journalEntry).Error; err != nil {
 			return shared.ErrCommon
 		}
+
+		h.Bus.Dispatch(TransferOutSuccess{
+			WalletID:       wallet.ID,
+			TransferID:     transfer.ID,
+			JournalEntryID: journalEntry.ID,
+		})
 
 		return nil
 	})

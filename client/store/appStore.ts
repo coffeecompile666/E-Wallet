@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { ReactElement } from 'react';
 import config from '@/config/config';
 
@@ -22,39 +23,51 @@ type AppState = {
   setAlerts: (alerts: ReactElement[]) => void;
 };
 
-export const useAppStore = create<AppState>()((set, getState) => ({
-  isLoading: false,
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, getState) => ({
+      isLoading: false,
 
-  setLoading: (loading) => {
-    set({ isLoading: loading });
-  },
+      setLoading: (loading) => {
+        set({ isLoading: loading });
+      },
 
-  setUser: (user) => {
-    set({ user });
-  },
+      setUser: (user) => {
+        set({ user });
+      },
 
-  clearUser: () => {
-    set({ user: undefined });
-  },
+      clearUser: () => {
+        set({ user: undefined });
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('access_token');
+        }
+      },
 
-  setAppDialog: (appDialog) => {
-    set({ appDialog });
-  },
+      setAppDialog: (appDialog) => {
+        set({ appDialog });
+      },
 
-  addAlert: (alert) => {
-    const old = getState().alerts || [];
-    const updated = [...old, alert].slice(-config.alert.maxDisplayNumber);
-    set({ alerts: updated });
+      addAlert: (alert) => {
+        const old = getState().alerts || [];
+        const updated = [...old, alert].slice(-config.alert.maxDisplayNumber);
+        set({ alerts: updated });
 
-    setTimeout(() => {
-      const old = getState().alerts || [];
-      const updated = old.filter((_alert) => _alert !== alert);
-      set({ alerts: updated });
-    }, config.alert.clearDelayMillisecond);
-  },
+        setTimeout(() => {
+          const old = getState().alerts || [];
+          const updated = old.filter((_alert) => _alert !== alert);
+          set({ alerts: updated });
+        }, config.alert.clearDelayMillisecond);
+      },
 
-  setAlerts: (alerts) => {
-    const updated = alerts.slice(-config.alert.maxDisplayNumber);
-    set({ alerts: updated });
-  },
-}));
+      setAlerts: (alerts) => {
+        const updated = alerts.slice(-config.alert.maxDisplayNumber);
+        set({ alerts: updated });
+      },
+    }),
+    {
+      name: 'app-storage',
+      // Only persist the user state, ignore UI-only states like dialogs, loaders, and alerts
+      partialize: (state) => ({ user: state.user }),
+    }
+  )
+);

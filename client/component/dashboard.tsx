@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
+import { logout } from '@/api/auth';
 import { addAlert } from '@/help/addAlert';
 import Button from '@/component/atomic/button';
 import Card from '@/component/atomic/card';
@@ -42,6 +43,16 @@ export default function Dashboard() {
   const setUser = useAppStore((state) => state.setUser);
   const clearUser = useAppStore((state) => state.clearUser);
   const setAppDialog = useAppStore((state) => state.setAppDialog);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      clearUser();
+    }
+  };
 
   // UI state
   const [showBalance, setShowBalance] = useState(true);
@@ -205,7 +216,7 @@ export default function Dashboard() {
             <UserName>{user.name}</UserName>
             <UserEmail>{user.email}</UserEmail>
           </UserInfo>
-          <LogoutButton onClick={clearUser} title="Đăng xuất">
+          <LogoutButton onClick={handleLogout} title="Đăng xuất">
             <LogOut size={18} />
           </LogoutButton>
         </UserMenu>

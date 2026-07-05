@@ -48,6 +48,7 @@ func main() {
 	}
 	router := gin.New()
 	router.Use(
+		middleware.CORS(),
 		middleware.ValidateToken(),
 		gin.Logger(),
 		logger.Recovery())
