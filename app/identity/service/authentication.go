@@ -59,7 +59,7 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		}
 		otpID = otp.ID
 
-		event = dto.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID}
+		event = dto.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID, UserName: user.Name}
 		return nil
 	})
 
@@ -303,6 +303,7 @@ func (s AuthenticationService) ForgotPassword(c *gin.Context) {
 	}
 
 	s.MessageBus.Dispatch(dto.UserForgotPasswordRequested{
+		UserName: user.Name,
 		Email:    user.Email,
 		EmailOTP: code,
 	})

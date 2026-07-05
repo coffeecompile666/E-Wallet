@@ -43,8 +43,9 @@ func (s TransactionPinService) Create(c *gin.Context) {
 	}
 
 	s.MessageBus.Dispatch(dto.UserSetTXPINRequested{
-		OTP:   code,
-		Email: user.Email,
+		UserName: user.Name,
+		OTP:      code,
+		Email:    user.Email,
 	})
 
 	c.JSON(http.StatusOK, shared.Response[uint]{

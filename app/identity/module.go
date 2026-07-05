@@ -13,8 +13,8 @@ type Module struct {
 	TransactionPinService *service.TransactionPinService
 }
 
-func NewModule(db *gorm.DB, messageBus *messages.MessageBus) Module {
-	return Module{
+func NewModule(db *gorm.DB, messageBus *messages.MessageBus) *Module {
+	return &Module{
 		AuthenticationService: &service.AuthenticationService{DB: db, MessageBus: messageBus},
 		TransactionPinService: &service.TransactionPinService{DB: db, MessageBus: messageBus},
 	}

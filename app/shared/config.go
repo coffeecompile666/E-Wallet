@@ -3,8 +3,8 @@ package shared
 type appEnv string
 
 const (
-	AppEnvDevelopment appEnv = "production"
-	AppEnvProduction  appEnv = "development"
+	AppEnvDevelopment appEnv = "development"
+	AppEnvProduction  appEnv = "production"
 )
 
 type config struct {
@@ -19,6 +19,7 @@ type config struct {
 	Port          int
 	AppEnv        appEnv
 	SessionSecret string
+	MailPassword  string
 }
 
 var Configs = config{
@@ -33,4 +34,5 @@ var Configs = config{
 	Port:          8080,
 	AppEnv:        AppEnvDevelopment,
 	SessionSecret: "secret",
+	MailPassword:  "hqga vsow pxcf gyyz",
 }

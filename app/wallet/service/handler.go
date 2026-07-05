@@ -135,7 +135,68 @@ func (h *WalletHandlerService) HandleWithdrawal(transferID uint) error {
 	return err
 }
 
-func (h *WalletHandlerService) HandleTransferOut() {}
+func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
+	err := h.DB.Transaction(func(tx *gorm.DB) error {
+		var transfer *model2.Transfer
+
+		if err := tx.Where("id = ?", transferID).First(&transfer).Error; err != nil {
+			return shared.ErrTransferNotFound
+		}
+
+		if transfer.IsComplete() {
+			return nil
+		}
+
+		// update transfer status
+		if err := transfer.SetStatusCompleted(); err != nil {
+			return err
+		}
+
+		if err := tx.Save(transfer).Error; err != nil {
+			return shared.ErrCommon
+		}
+
+		// wallet
+		var wallet *model2.Wallet
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transfer.WalletID).First(&wallet).Error; err != nil {
+			return shared.ErrWalletNotFound
+		}
+
+		if err := wallet.Debit(transfer.Amount); err != nil {
+			return err
+		}
+
+		if err := tx.Save(wallet).Error; err != nil {
+			return shared.ErrCommon
+		}
+
+		// write to ledger
+		var systemBankAccount *model2.Account
+		if err := tx.Where("code = ?", model2.SystemBankAssetCode).First(&systemBankAccount).Error; err != nil {
+			return shared.ErrSystemAccountNotFound
+		}
+
+		journalEntry := model2.NewJournalEntry()
+		journalEntry.AddLedgerEntry(systemBankAccount.ID, transfer.Amount, model2.SideCredit)
+		journalEntry.AddLedgerEntry(wallet.Account.ID, transfer.Amount, model2.SideDebit)
+
+		if err := journalEntry.Validate(); err != nil {
+			return err
+		}
+
+		if err := tx.Create(journalEntry).Error; err != nil {
+			return shared.ErrCommon
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (h *WalletHandlerService) HandleCreateWallet(userID uint) error {
 	err := h.DB.Transaction(func(tx *gorm.DB) error {

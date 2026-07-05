@@ -2,7 +2,10 @@ package database
 
 import (
 	"app/identity/model"
+	model4 "app/notification/model"
+	model2 "app/payment/model"
 	"app/shared"
+	model3 "app/wallet/model"
 	"fmt"
 
 	"gorm.io/driver/postgres"
@@ -30,7 +33,16 @@ func Migrate(db *gorm.DB) error {
 			model.Session{},
 			model.TransactionPin{},
 			model.OTP{},
-			model.Session{})
+			model.Session{},
+			model2.LinkedBankAccount{},
+			model2.Payment{},
+			model3.Account{},
+			model3.JournalEntry{},
+			model3.LedgerEntry{},
+			model3.Wallet{},
+			model3.Transfer{},
+			model4.Notification{},
+		)
 		if err != nil {
 			return err
 		}

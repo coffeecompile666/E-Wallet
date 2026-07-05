@@ -19,7 +19,7 @@ const (
 
 type Payment struct {
 	gorm.Model
-	Amount     uint          `gorm:"type:bigint(20);not null"`
+	Amount     uint          `gorm:"not null"`
 	TransferID uint          `gorm:"not null"`
 	Type       PaymentType   `gorm:"type:varchar(20);not null"`
 	Status     PaymentStatus `gorm:"type:varchar(20);not null"`

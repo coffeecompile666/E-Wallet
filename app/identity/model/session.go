@@ -75,7 +75,7 @@ func (s *Session) Revoke() {
 		return
 	}
 
-	if isExpired(*s.RevokedAt) {
+	if isExpired(s.ExpiredAt) {
 		return
 	}
 

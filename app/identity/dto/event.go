@@ -1,9 +1,10 @@
 package dto
 
 type UserRegistered struct {
-	Email  string
-	OTP    string
-	UserID uint
+	UserID   uint
+	UserName string
+	Email    string
+	OTP      string
 }
 
 func (u UserRegistered) Name() string {
@@ -11,6 +12,7 @@ func (u UserRegistered) Name() string {
 }
 
 type UserForgotPasswordRequested struct {
+	UserName string
 	Email    string
 	EmailOTP string
 }
@@ -20,8 +22,9 @@ func (u UserForgotPasswordRequested) Name() string {
 }
 
 type UserSetTXPINRequested struct {
-	OTP   string
-	Email string
+	UserName string
+	Email    string
+	OTP      string
 }
 
 func (u UserSetTXPINRequested) Name() string {
