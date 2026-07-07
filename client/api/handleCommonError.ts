@@ -49,6 +49,7 @@ export const ErrorCodes = {
   INTERNAL_ERROR: 1005,
   TRANSFER_TO_BANK_ACCOUNT_ERROR: 1045,
   WITHDRAWAL_TO_BANK_ACCOUNT_ERROR: 1046,
+  TRANSACTION_PIN_NOT_SET: 1047,
 } as const;
 
 export const ErrorMessages: Record<number, string> = {
@@ -98,6 +99,7 @@ export const ErrorMessages: Record<number, string> = {
   1005: 'Hệ thống gặp sự cố, vui lòng thử lại sau.',
   1045: 'Chuyển tiền tới ngân hàng thất bại.',
   1046: 'Rút tiền từ ngân hàng thất bại.',
+  1047: 'Mã PIN giao dịch chưa được thiết lập.',
 };
 
 export interface AppApiError extends Error {

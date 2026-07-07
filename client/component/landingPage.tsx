@@ -245,6 +245,7 @@ const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   background-color: var(--background);
+  overflow-x: hidden;
 `;
 
 const Header = styled.header`
@@ -290,7 +291,6 @@ const LogoIcon = styled.div`
     left: 25%;
     width: 50%;
     height: 50%;
-    border: 2px.5 solid white;
     border: 3px solid white;
     border-radius: 50%;
     border-top-color: transparent;
@@ -404,6 +404,7 @@ const HeroVisual = styled.div`
 
 const InteractiveCard = styled.div`
   width: 340px;
+  max-width: 100%;
   height: 200px;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);

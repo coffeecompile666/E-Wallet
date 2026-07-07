@@ -21,7 +21,7 @@ func (i *InMemoryEventBus) Publish(event Event) {
 	go func() {
 		for _, h := range handlers {
 			if err := h(event); err != nil {
-				logger.Log.Error("[EVENTBUS ERR]", err)
+				logger.Log.Error("[EVENTBUS ERR]", "err", err)
 			}
 		}
 	}()

@@ -3,6 +3,8 @@ package service
 import (
 	model2 "app/identity/model"
 	"app/payment"
+	paymentEvent "app/payment/event"
+	paymentModel "app/payment/model"
 	"app/payment/service"
 	"app/shared"
 	"app/wallet/model"
@@ -24,9 +26,10 @@ func NewDepositService(db *gorm.DB, payment *payment.Payment) *DepositService {
 }
 
 type depositRequest struct {
-	WalletID      uint `json:"wallet_id"`
-	Amount        uint `json:"amount"`
-	BankAccountID uint `json:"bank_account_id"`
+	WalletID      uint   `json:"wallet_id" binding:"required"`
+	Amount        uint   `json:"amount" binding:"required"`
+	BankAccountID uint   `json:"bank_account_id" binding:"required"`
+	TxPIN         string `json:"tx_pin" binding:"required"`
 }
 
 func (d *DepositService) Deposit(c *gin.Context) {
@@ -48,6 +51,15 @@ func (d *DepositService) Deposit(c *gin.Context) {
 		}
 
 		if err := user.VerifyActive(); err != nil {
+			return err
+		}
+
+		txPIN := model2.TransactionPin{}
+		if err := tx.Where("user_id = ?", userID).First(&txPIN).Error; err != nil {
+			return shared.ErrTransactionPINNotSet
+		}
+
+		if err := txPIN.Verify(req.TxPIN); err != nil {
 			return err
 		}
 
@@ -80,7 +92,7 @@ func (d *DepositService) Deposit(c *gin.Context) {
 			}
 		}
 
-		if err := d.Payment.Gateway.WithdrawalAccount(service.WithdrawalCommand{
+		if err := d.Payment.Gateway.WithdrawalAccount(tx, service.WithdrawalCommand{
 			TransferID: transfer.ID,
 			Amount:     req.Amount,
 			AccountID:  account.ID,
@@ -97,6 +109,12 @@ func (d *DepositService) Deposit(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
+
+	// Phát sự kiện sau khi transaction đã commit thành công
+	d.Payment.Bus.Publish(paymentEvent.BankWithdrawalSucceed{
+		TransferID: transferID,
+		Status:     paymentModel.SUCCESS,
+	})
 
 	c.JSON(http.StatusOK, shared.Response[uint]{Data: transferID})
 }

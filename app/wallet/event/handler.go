@@ -6,6 +6,7 @@ import (
 	event2 "app/payment/event"
 	"app/shared"
 	"app/shared/eventbus"
+	"app/shared/logger"
 	model2 "app/wallet/model"
 	"errors"
 
@@ -93,6 +94,7 @@ func (h *WalletEventHandler) HandleTransferOut(e eventbus.Event) error {
 		var transfer *model2.Transfer
 
 		if err := tx.Where("id = ?", transferID).First(&transfer).Error; err != nil {
+			logger.Log.Error("transfer not found", "err", err)
 			return shared.ErrTransferNotFound
 		}
 
@@ -113,6 +115,10 @@ func (h *WalletEventHandler) HandleTransferOut(e eventbus.Event) error {
 		var wallet *model2.Wallet
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transfer.WalletID).Preload("Account").First(&wallet).Error; err != nil {
 			return shared.ErrWalletNotFound
+		}
+
+		if err := wallet.Unlock(transfer.Amount); err != nil {
+			return err
 		}
 
 		if err := wallet.Debit(transfer.Amount); err != nil {

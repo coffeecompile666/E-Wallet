@@ -6,6 +6,7 @@ import {
   DepositRequest,
   WithdrawalRequest,
   TransferOutRequest,
+  TransferToUserRequest,
   ResponseWrapper,
   CursorResponse,
 } from './types';
@@ -49,5 +50,11 @@ export const withdraw = (data: WithdrawalRequest): Promise<ResponseWrapper<numbe
 export const transferOut = (data: TransferOutRequest): Promise<ResponseWrapper<number>> => {
   return handleCommonError(
     request.post<ResponseWrapper<number>>('/wallet/transfer-out', data).then((res) => res.data)
+  );
+};
+
+export const transferToUser = (data: TransferToUserRequest): Promise<ResponseWrapper<number>> => {
+  return handleCommonError(
+    request.post<ResponseWrapper<number>>('/wallet/transfer-to-user', data).then((res) => res.data)
   );
 };

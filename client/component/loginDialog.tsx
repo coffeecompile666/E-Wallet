@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Mail, Lock, Eye, EyeOff, UserPlus, LogIn, KeyRound } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, UserPlus, LogIn, KeyRound, ArrowLeft } from 'lucide-react';
 import AppDialog from '@/component/atomic/dialog';
 import Input from '@/component/atomic/input';
 import Button from '@/component/atomic/button';
 import PinInput from '@/component/atomic/pinInput';
 import { useAppStore } from '@/store/appStore';
 import { useSignupStore } from '@/store/signupStore';
-import { signup, verifyOTP, confirmSignup, signin, getMe } from '@/api/auth';
+import { signup, verifyOTP, confirmSignup, signin, getMe, forgotPassword, confirmForgotPassword } from '@/api/auth';
 import { getWalletMe } from '@/api/wallet';
 import { addAlert } from '@/help/addAlert';
 
@@ -21,7 +21,7 @@ type LoginDialogProps = {
 export default function LoginDialog({ open, onClose }: LoginDialogProps) {
   const setUser = useAppStore((state) => state.setUser);
   
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot_password'>('login');
   
   // Login states
   const [loginEmail, setLoginEmail] = useState('');
@@ -35,6 +35,15 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
 
+  // Forgot Password states
+  const [forgotEmail, setForgotPasswordEmail] = useState('');
+  const [forgotStep, setForgotPasswordStep] = useState<1 | 2>(1); // 1: email input, 2: OTP & new password
+  const [forgotOtpVal, setForgotPasswordOtpVal] = useState('');
+  const [forgotPasswordVal, setForgotPasswordVal] = useState('');
+  const [forgotConfirmPasswordVal, setForgotPasswordConfirmPasswordVal] = useState('');
+  const [forgotOtpId, setForgotPasswordOtpId] = useState<number | null>(null);
+  const [forgotLoading, setForgotPasswordLoading] = useState(false);
+
   // Error states
   const [errors, setErrors] = useState<{
     email?: string;
@@ -43,7 +52,14 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     otp?: string;
   }>({});
 
-  // Step 3 Automated Verification
+  // Reset states on Dialog open/close
+  useEffect(() => {
+    if (open) {
+      handleTabChange('login');
+    }
+  }, [open]);
+
+  // Step 3 Automated Verification for Signup
   useEffect(() => {
     if (activeTab === 'register' && signupState.step === 3) {
       const runVerify = async () => {
@@ -66,7 +82,7 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     }
   }, [signupState.step, activeTab]);
 
-  const handleTabChange = (tab: 'login' | 'register') => {
+  const handleTabChange = (tab: 'login' | 'register' | 'forgot_password') => {
     setActiveTab(tab);
     setErrors({});
     setLoginPassword('');
@@ -74,6 +90,14 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     setSignupPassword('');
     setSignupConfirmPassword('');
     signupState.resetSignup();
+    // reset forgot password states
+    setForgotPasswordEmail('');
+    setForgotPasswordStep(1);
+    setForgotPasswordOtpVal('');
+    setForgotPasswordVal('');
+    setForgotPasswordConfirmPasswordVal('');
+    setForgotPasswordOtpId(null);
+    setForgotPasswordLoading(false);
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -114,6 +138,7 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
           name: userRes.data.Name,
           balance: walletRes.data.Balance - walletRes.data.LockedAmount,
           walletId: walletRes.data.id || (walletRes.data as any).ID,
+          hasTxPin: !!userRes.data.TransactionPin || !!(userRes.data as any).TransactionPIN,
         });
 
         addAlert(<AlertContent>Đăng nhập thành công!</AlertContent>);
@@ -126,7 +151,7 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     }
   };
 
-  // Step 1: Submit Email
+  // Step 1: Submit Email for Signup
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupState.email) {
@@ -153,7 +178,7 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     }
   };
 
-  // Step 2: Submit OTP
+  // Step 2: Submit OTP for Signup
   const handleStep2Submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (otpVal.length < 6) {
@@ -206,6 +231,73 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
     }
   };
 
+  // Forgot Password: Step 1 (Request OTP)
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    if (!forgotEmail) {
+      setErrors({ email: 'Vui lòng nhập địa chỉ email của bạn' });
+      return;
+    } else if (!/\S+@\S+\.\S+/.test(forgotEmail)) {
+      setErrors({ email: 'Email không đúng định dạng' });
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    try {
+      const res = await forgotPassword({ email: forgotEmail });
+      if (res?.data) {
+        setForgotPasswordOtpId(res.data);
+        setForgotPasswordStep(2);
+        addAlert(<AlertContent>Mã OTP khôi phục mật khẩu đã gửi qua email.</AlertContent>);
+      }
+    } catch (err: any) {
+      addAlert(<AlertContent>{err.userMessage || 'Không thể gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.'}</AlertContent>);
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  // Forgot Password: Step 2 (Confirm details & reset)
+  const handleConfirmForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+
+    const tempErrors: typeof errors = {};
+    if (forgotOtpVal.length < 6) {
+      tempErrors.otp = 'Vui lòng nhập đủ 6 chữ số mã OTP';
+    }
+    if (forgotPasswordVal.length < 6) {
+      tempErrors.password = 'Mật khẩu mới phải có tối thiểu 6 ký tự';
+    }
+    if (forgotPasswordVal !== forgotConfirmPasswordVal) {
+      tempErrors.confirmPassword = 'Mật khẩu xác nhận không trùng khớp';
+    }
+
+    setErrors(tempErrors);
+    if (Object.keys(tempErrors).length > 0) return;
+
+    if (!forgotOtpId) return;
+
+    setForgotPasswordLoading(true);
+    try {
+      await confirmForgotPassword({
+        otp_id: forgotOtpId,
+        otp: forgotOtpVal,
+        password: forgotPasswordVal,
+        password_confirmation: forgotConfirmPasswordVal,
+      });
+
+      addAlert(<AlertContent>Đặt lại mật khẩu thành công! Vui lòng đăng nhập.</AlertContent>);
+      handleTabChange('login');
+    } catch (err: any) {
+      addAlert(<AlertContent>{err.userMessage || 'Đặt lại mật khẩu thất bại. Vui lòng kiểm tra lại OTP.'}</AlertContent>);
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
   return (
     <AppDialog open={open} onClose={onClose} title="">
       <DialogHeader>
@@ -216,28 +308,37 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
         <Subtitle>
           {activeTab === 'login'
             ? 'Đăng nhập tài khoản của bạn để giao dịch nhanh chóng'
-            : 'Đăng ký ví điện tử Tingting bảo mật và tiện lợi'}
+            : activeTab === 'register'
+            ? 'Đăng ký ví điện tử Tingting bảo mật và tiện lợi'
+            : 'Khôi phục mật khẩu ví điện tử Tingting'}
         </Subtitle>
       </DialogHeader>
 
-      <TabContainer>
-        <TabButton 
-          $active={activeTab === 'login'} 
-          onClick={() => handleTabChange('login')}
-          type="button"
-        >
-          <LogIn size={16} /> Đăng nhập
-        </TabButton>
-        <TabButton 
-          $active={activeTab === 'register'} 
-          onClick={() => handleTabChange('register')}
-          type="button"
-        >
-          <UserPlus size={16} /> Đăng ký
-        </TabButton>
-      </TabContainer>
+      {activeTab !== 'forgot_password' ? (
+        <TabContainer>
+          <TabButton 
+            $active={activeTab === 'login'} 
+            onClick={() => handleTabChange('login')}
+            type="button"
+          >
+            <LogIn size={16} /> Đăng nhập
+          </TabButton>
+          <TabButton 
+            $active={activeTab === 'register'} 
+            onClick={() => handleTabChange('register')}
+            type="button"
+          >
+            <UserPlus size={16} /> Đăng ký
+          </TabButton>
+        </TabContainer>
+      ) : (
+        <BackToLoginRow onClick={() => handleTabChange('login')}>
+          <ArrowLeft size={16} /> Quay lại đăng nhập
+        </BackToLoginRow>
+      )}
 
-      {activeTab === 'login' ? (
+      {/* LOGIN TAB */}
+      {activeTab === 'login' && (
         <Form onSubmit={handleLoginSubmit}>
           <Input
             id="auth-email"
@@ -268,6 +369,10 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
             disabled={loginLoading}
           />
 
+          <ForgotPasswordLink type="button" onClick={() => handleTabChange('forgot_password')}>
+            Quên mật khẩu?
+          </ForgotPasswordLink>
+
           <SubmitButton 
             variant="primary" 
             type="submit" 
@@ -276,8 +381,10 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
             Đăng nhập ngay
           </SubmitButton>
         </Form>
-      ) : (
-        /* Signup Flow Wizard */
+      )}
+
+      {/* REGISTER TAB */}
+      {activeTab === 'register' && (
         <div>
           {/* Step 1: Input Email */}
           {signupState.step === 1 && (
@@ -390,10 +497,103 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
           )}
         </div>
       )}
+
+      {/* FORGOT PASSWORD TAB */}
+      {activeTab === 'forgot_password' && (
+        <div>
+          {/* Step 1: Input Email */}
+          {forgotStep === 1 && (
+            <Form onSubmit={handleForgotPasswordSubmit}>
+              <Input
+                id="forgot-email"
+                type="email"
+                label="Nhập Email để lấy lại mật khẩu"
+                placeholder="email@example.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                leftIcon={<Mail />}
+                error={errors.email}
+                disabled={forgotLoading}
+              />
+              <SubmitButton 
+                variant="primary" 
+                type="submit" 
+                isLoading={forgotLoading}
+              >
+                Gửi mã OTP qua Email
+              </SubmitButton>
+            </Form>
+          )}
+
+          {/* Step 2: Input OTP & New Password */}
+          {forgotStep === 2 && (
+            <Form onSubmit={handleConfirmForgotPasswordSubmit}>
+              <OtpSection>
+                <OtpLabel>Xác thực mã OTP khôi phục</OtpLabel>
+                <OtpSubtext>Mã OTP đã gửi đến email: <strong>{forgotEmail}</strong></OtpSubtext>
+                <OtpWrapper>
+                  <PinInput
+                    length={6}
+                    value={forgotOtpVal}
+                    onChange={(val) => setForgotPasswordOtpVal(val)}
+                    mask={false}
+                  />
+                </OtpWrapper>
+                {errors.otp && <OtpError>{errors.otp}</OtpError>}
+              </OtpSection>
+
+              <Input
+                id="forgot-new-password"
+                type={showPassword ? 'text' : 'password'}
+                label="Mật khẩu mới"
+                placeholder="Nhập mật khẩu mới"
+                value={forgotPasswordVal}
+                onChange={(e) => setForgotPasswordVal(e.target.value)}
+                leftIcon={<Lock />}
+                rightIcon={
+                  <IconButton onClick={() => setShowPassword(!showPassword)} type="button">
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </IconButton>
+                }
+                error={errors.password}
+                disabled={forgotLoading}
+              />
+
+              <Input
+                id="forgot-confirm-new-password"
+                type={showPassword ? 'text' : 'password'}
+                label="Xác nhận mật khẩu mới"
+                placeholder="Nhập lại mật khẩu mới"
+                value={forgotConfirmPasswordVal}
+                onChange={(e) => setForgotPasswordConfirmPasswordVal(e.target.value)}
+                leftIcon={<Lock />}
+                error={errors.confirmPassword}
+                disabled={forgotLoading}
+              />
+
+              <SubmitButton 
+                variant="primary" 
+                type="submit" 
+                isLoading={forgotLoading}
+              >
+                Đồng ý thay đổi
+              </SubmitButton>
+              <BackButton 
+                variant="ghost" 
+                type="button"
+                onClick={() => setForgotPasswordStep(1)}
+              >
+                Quay lại nhập Email
+              </BackButton>
+            </Form>
+          )}
+        </div>
+      )}
     </AppDialog>
   );
 }
 
+// Styled Components
 const DialogHeader = styled.div`
   display: flex;
   flex-direction: column;
@@ -473,6 +673,42 @@ const TabButton = styled.button<{ $active: boolean }>`
 
   &:hover {
     color: var(--text-primary);
+  }
+`;
+
+const ForgotPasswordLink = styled.button`
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+  cursor: pointer;
+  align-self: flex-end;
+  padding: 0;
+  margin-top: -4px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const BackToLoginRow = styled.button`
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-family: var(--font-family);
+  cursor: pointer;
+  padding: var(--space-2) 0;
+  margin-bottom: var(--space-4);
+  align-self: flex-start;
+
+  &:hover {
+    color: var(--primary);
   }
 `;
 

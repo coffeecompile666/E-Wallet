@@ -78,3 +78,9 @@ export const getMe = (): Promise<ResponseWrapper<User>> => {
     request.get<ResponseWrapper<User>>('/me').then((res) => res.data)
   );
 };
+
+export const searchUsers = (search: string): Promise<{ users: User[] }> => {
+  return handleCommonError(
+    request.get<{ users: User[] }>('/user/search', { params: { search } }).then((res) => res.data)
+  );
+};

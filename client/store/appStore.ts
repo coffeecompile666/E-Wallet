@@ -9,6 +9,7 @@ type User = {
   name: string;
   balance: number;
   walletId: number;
+  hasTxPin: boolean;
 };
 
 type AppState = {

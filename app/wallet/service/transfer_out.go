@@ -3,6 +3,8 @@ package service
 import (
 	model2 "app/identity/model"
 	"app/payment"
+	paymentEvent "app/payment/event"
+	paymentModel "app/payment/model"
 	"app/payment/service"
 	"app/shared"
 	"app/shared/eventbus"
@@ -25,12 +27,13 @@ func NewTransferOutService(db *gorm.DB, bus eventbus.EventBus, payment *payment.
 }
 
 type transferOutRequest struct {
-	WalletID uint   `json:"wallet_id"`
-	Amount   uint   `json:"amount"`
-	Bank     string `json:"bank"`
-	Number   string `json:"number"`
-	Name     string `json:"name"`
+	WalletID uint   `json:"wallet_id" binding:"required"`
+	Amount   uint   `json:"amount" binding:"required"`
+	Bank     string `json:"bank" binding:"required"`
+	Number   string `json:"number" binding:"required"`
+	Name     string `json:"name" binding:"required"`
 	Note     string `json:"note"`
+	TxPIN    string `json:"tx_pin" binding:"required"`
 }
 
 func (t *TransferOutService) TransferOut(c *gin.Context) {
@@ -50,6 +53,16 @@ func (t *TransferOutService) TransferOut(c *gin.Context) {
 		}
 
 		if err := user.VerifyActive(); err != nil {
+			return err
+		}
+
+		// check transaction pin
+		txPIN := model2.TransactionPin{}
+		if err := tx.Where("user_id = ?", userID).First(&txPIN).Error; err != nil {
+			return shared.ErrTransactionPINNotSet
+		}
+
+		if err := txPIN.Verify(req.TxPIN); err != nil {
 			return err
 		}
 
@@ -83,7 +96,7 @@ func (t *TransferOutService) TransferOut(c *gin.Context) {
 			Name:       req.Name,
 		}
 
-		if err := t.Payment.Gateway.TransferToAccount(bankTransferCommand); err != nil {
+		if err := t.Payment.Gateway.TransferToAccount(tx, bankTransferCommand); err != nil {
 			return err
 		}
 
@@ -96,6 +109,12 @@ func (t *TransferOutService) TransferOut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, shared.ErrBadRequest)
 		return
 	}
+
+	// Phát sự kiện sau khi transaction đã commit thành công
+	t.Bus.Publish(paymentEvent.BankTransferSucceed{
+		TransferID: transferID,
+		Status:     paymentModel.SUCCESS,
+	})
 
 	c.JSON(http.StatusOK, shared.Response[uint]{Data: transferID})
 }

@@ -31,7 +31,8 @@ import { LinkedBankAccount, Transfer } from '@/api/types';
 import BankAccountCard from './dashboard/BankAccountCard';
 import DepositModal from './dashboard/DepositModal';
 import WithdrawModal from './dashboard/WithdrawModal';
-import PinVerifyModal from './dashboard/PinVerifyModal';
+import TransferModal from './dashboard/TransferModal';
+import CreateTxPinModal from './dashboard/CreateTxPinModal';
 
 export default function Dashboard() {
   const user = useAppStore((state) => state.user);
@@ -43,15 +44,13 @@ export default function Dashboard() {
   const [showBalance, setShowBalance] = useState(true);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [isCreateTxPinOpen, setIsCreateTxPinOpen] = useState(false);
   const [isLinkBankOpenForce, setIsLinkBankOpenForce] = useState(false); // Helper to open Link Bank Modal from Deposit Modal
   const [bankAccounts, setBankAccounts] = useState<LinkedBankAccount[]>([]);
   const [transactions, setTransactions] = useState<Transfer[]>([]);
 
-  // Transfer Form state
-  const [receiver, setReceiver] = useState('');
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferMessage, setTransferMessage] = useState('Chuyển tiền ví Tingting');
-  const [errors, setErrors] = useState<{ receiver?: string; amount?: string }>({});
+
 
   const formatVND = (num: number) => {
     return num.toLocaleString('vi-VN') + ' đ';
@@ -92,6 +91,14 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (user && user.hasTxPin === false) {
+      setIsCreateTxPinOpen(true);
+    } else {
+      setIsCreateTxPinOpen(false);
+    }
+  }, [user?.hasTxPin]);
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -102,55 +109,7 @@ export default function Dashboard() {
     }
   };
 
-  const startTransfer = (e: React.FormEvent) => {
-    e.preventDefault();
-    const tempErrors: typeof errors = {};
-    if (!receiver) {
-      tempErrors.receiver = 'Vui lòng nhập Email hoặc Số điện thoại người nhận';
-    }
-    
-    const amt = parseFloat(transferAmount);
-    if (isNaN(amt) || amt <= 0) {
-      tempErrors.amount = 'Số tiền chuyển không hợp lệ';
-    } else if (amt > user!.balance) {
-      tempErrors.amount = 'Số tiền vượt quá số dư khả dụng';
-    }
 
-    setErrors(tempErrors);
-    if (Object.keys(tempErrors).length > 0) return;
-
-    openPinVerification(amt);
-  };
-
-  const openPinVerification = (amt: number) => {
-    setAppDialog(
-      <PinVerifyModal 
-        amount={amt} 
-        receiver={receiver} 
-        message={transferMessage}
-        onVerifySuccess={() => confirmTransfer(amt)}
-      />
-    );
-  };
-
-  const confirmTransfer = (amt: number) => {
-    if (!user) return;
-    const updatedBalance = user.balance - amt;
-    setUser({ ...user, balance: updatedBalance });
-
-    setReceiver('');
-    setTransferAmount('');
-    setTransferMessage('Chuyển tiền ví Tingting');
-    setAppDialog(undefined);
-    
-    addAlert(
-      <AlertContent>
-        <CircleCheck size={18} color="var(--success)" />
-        <span>Giao dịch chuyển tiền {formatVND(amt)} đã hoàn thành!</span>
-      </AlertContent>
-    );
-    fetchTransactions();
-  };
 
   if (!user) return null;
 
@@ -205,45 +164,26 @@ export default function Dashboard() {
                 </ActionIconWrapper>
                 <span>Rút tiền</span>
               </ActionButton>
+
+              <ActionButton onClick={() => setIsTransferOpen(true)}>
+                <ActionIconWrapper $color="var(--warning)">
+                  <ArrowRight size={20} />
+                </ActionIconWrapper>
+                <span>Chuyển tiền</span>
+              </ActionButton>
             </ActionRow>
           </BalanceCard>
 
           {/* Quick Transfer Card */}
           <Card title="Chuyển tiền nhanh" extra={<Badge variant="success">Bảo mật</Badge>}>
-            <Form onSubmit={startTransfer}>
-              <Input
-                id="transfer-receiver"
-                label="Người nhận (Email hoặc SĐT)"
-                placeholder="nhap.email@example.com hoặc SĐT"
-                value={receiver}
-                onChange={(e) => setReceiver(e.target.value)}
-                leftIcon={<User size={16} />}
-                error={errors.receiver}
-              />
-              
-              <Input
-                id="transfer-amount"
-                label="Số tiền chuyển (VND)"
-                type="number"
-                placeholder="Nhập số tiền chuyển"
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(e.target.value)}
-                leftIcon={<Wallet size={16} />}
-                error={errors.amount}
-              />
-
-              <Input
-                id="transfer-message"
-                label="Lời nhắn chuyển tiền"
-                placeholder="Nội dung chuyển tiền"
-                value={transferMessage}
-                onChange={(e) => setTransferMessage(e.target.value)}
-              />
-
-              <Button variant="primary" type="submit" style={{ width: '100%', marginTop: '8px' }} rightIcon={<ArrowRight />}>
-                Tiếp tục giao dịch
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'var(--text-secondary)', margin: 0 }}>
+                Chuyển khoản tức thì tới người dùng khác trong hệ thống ví Tingting bằng tên tài khoản hoặc email của họ.
+              </p>
+              <Button variant="primary" onClick={() => setIsTransferOpen(true)} style={{ width: '100%' }} rightIcon={<ArrowRight />}>
+                Thực hiện chuyển tiền
               </Button>
-            </Form>
+            </div>
           </Card>
 
           {/* Linked Bank Accounts Card */}
@@ -328,6 +268,19 @@ export default function Dashboard() {
           setIsWithdrawOpen(false);
           addAlert(<>Vui lòng nhấp vào nút "Liên kết mới" ở thẻ Tài khoản liên kết.</>);
         }}
+      />
+      {/* Transfer Dialog */}
+      <TransferModal 
+        open={isTransferOpen} 
+        onClose={() => setIsTransferOpen(false)} 
+        onSuccess={() => {
+          fetchTransactions();
+        }}
+      />
+      {/* Create Transaction PIN Dialog */}
+      <CreateTxPinModal
+        open={isCreateTxPinOpen}
+        onClose={() => setIsCreateTxPinOpen(false)}
       />
     </Container>
   );

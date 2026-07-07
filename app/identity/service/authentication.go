@@ -27,7 +27,11 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, shared.ErrBadRequest)
 		return
 	}
+
+	var mail string
+	var otpCode string
 	var otpID uint
+	var ID uint
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		user := &model.User{Email: body.Email}
@@ -57,8 +61,10 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 			return shared.ErrCommon
 		}
 		otpID = otp.ID
+		mail = user.Email
+		otpCode = code
+		ID = user.ID
 
-		s.Bus.Publish(event.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID, UserName: user.Name})
 		return nil
 	})
 
@@ -75,6 +81,8 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, shared.ErrCommon)
 		return
 	}
+
+	s.Bus.Publish(event.UserRegistered{Email: mail, OTP: otpCode, UserID: ID})
 
 	c.JSON(http.StatusCreated, shared.Response[uint]{
 		Data: otpID,
@@ -114,6 +122,8 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 		return
 	}
 
+	user := &model.User{}
+
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
 		otp := model.OTP{}
 		if err := tx.First(&otp, body.OtpID).Error; err != nil {
@@ -123,9 +133,10 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 		if err := otp.Verify(body.OTP); err != nil {
 			return err
 		}
-
-		user := &model.User{}
+		logger.Log.Info("OTP verified", "otp", otp)
 		if err := tx.First(user, otp.UserID).Error; err != nil {
+
+			logger.Log.Error(err.Error())
 			return shared.ErrUserNotFound
 		}
 		if err := user.ConfirmSignup(body.Password); err != nil {
@@ -140,11 +151,6 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 			return err
 		}
 
-		s.Bus.Publish(event.UserSignupSuccess{
-			UserID: user.ID,
-			Email:  user.Email,
-		})
-
 		return nil
 	})
 
@@ -152,6 +158,11 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
+
+	s.Bus.Publish(event.UserSignupSuccess{
+		UserID: user.ID,
+		Email:  user.Email,
+	})
 
 	c.JSON(http.StatusOK, shared.Empty{})
 }
@@ -163,8 +174,8 @@ func (s AuthenticationService) Signing(c *gin.Context) {
 		return
 	}
 
-	user := &model.User{Email: body.Email}
-	if err := s.DB.First(user).Error; err != nil {
+	user := &model.User{}
+	if err := s.DB.Where("email = ?", body.Email).First(user).Error; err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrUserNotFound)
 		return
 	}
@@ -379,8 +390,9 @@ func (s AuthenticationService) ConfirmForgotPassword(c *gin.Context) {
 func (s AuthenticationService) Me(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
 	user := &model.User{}
-	if err := s.DB.First(user, userID).Error; err != nil {
+	if err := s.DB.Where("id = ?", userID).Preload("TransactionPin").First(user, userID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrUserNotFound)
+		return
 	}
 
 	c.JSON(http.StatusOK, shared.Response[*model.User]{Data: user})

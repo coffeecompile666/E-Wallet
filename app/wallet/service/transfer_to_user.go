@@ -31,6 +31,7 @@ type TransferToUserRequest struct {
 	ReceiverID uint   `json:"receiver_id" binding:"required"`
 	Amount     uint   `json:"amount" binding:"required"`
 	Note       string `json:"note"`
+	TxPIN      string `json:"tx_pin" binding:"required"`
 }
 
 func (service *TransferToUserService) Execute(c *gin.Context) {
@@ -54,6 +55,16 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return err
 		}
 
+		// check transaction pin
+		txPIN := model.TransactionPin{}
+		if err := tx.Where("user_id = ?", userID).First(&txPIN).Error; err != nil {
+			return shared.ErrTransactionPINNotSet
+		}
+
+		if err := txPIN.Verify(req.TxPIN); err != nil {
+			return err
+		}
+
 		var receiver model.User
 		if err := service.DB.First(&receiver, req.ReceiverID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -62,7 +73,7 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return shared.ErrCommon
 		}
 
-		wallet, err := service.getWalletForUpdate(tx, userID, req.WalletID)
+		wallet, err := service.getWalletForUpdateByUserID(tx, userID)
 		if err != nil {
 			return err
 		}
@@ -75,9 +86,13 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return err
 		}
 
-		receiverWallet, err := service.getWalletForUpdate(tx, req.ReceiverID, receiver.ID)
+		receiverWallet, err := service.getWalletForUpdateByUserID(tx, req.ReceiverID)
 		if err != nil {
 			return err
+		}
+
+		if user.ID == receiver.ID || wallet.ID == receiverWallet.ID {
+			return shared.ErrCannotTransferToSelf
 		}
 
 		if err := receiverWallet.Credit(req.Amount); err != nil {
@@ -88,6 +103,7 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return err
 		}
 
+		// write to ledger
 		journalEntry := model2.NewJournalEntry()
 
 		journalEntry.AddLedgerEntry(wallet.Account.ID, req.Amount, model2.SideDebit)
@@ -118,18 +134,18 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 	c.JSON(http.StatusOK, shared.Empty{})
 }
 
-func (service *TransferToUserService) getWalletForUpdate(tx *gorm.DB, userID uint, walletID uint) (*model2.Wallet, error) {
+func (service *TransferToUserService) getWalletForUpdateByUserID(tx *gorm.DB, userID uint) (*model2.Wallet, error) {
 	var wallet model2.Wallet
 
 	if err := tx.
 		Clauses(clause.Locking{
 			Strength: "UPDATE",
 		}).
-		Where("id = ? AND owner_id = ?", walletID, userID).
+		Where("owner_id = ?", userID).
 		Preload("Account").
 		First(&wallet).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, shared.ErrNotFound
+			return nil, shared.ErrWalletNotFound
 		}
 		return nil, shared.ErrCommon
 	}

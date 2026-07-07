@@ -1,7 +1,6 @@
 package service
 
 import (
-	"app/payment/event"
 	"app/payment/model"
 	"app/shared"
 	"app/shared/eventbus"
@@ -36,70 +35,47 @@ type WithdrawalCommand struct {
 	AccountID  uint
 }
 
-func (g *GatewayService) TransferToAccount(data BankTransferCommand) error {
+func (g *GatewayService) TransferToAccount(tx *gorm.DB, data BankTransferCommand) error {
 	if err := g.verifyBankAccount(); err != nil {
 		return err
 	}
 
-	var payment *model.Payment
+	payment := model.NewPayment(data.Amount, data.TransferID, model.IN)
 
-	err := g.DB.Transaction(func(tx *gorm.DB) error {
-		payment = model.NewPayment(data.Amount, data.TransferID, model.IN)
-
-		if err := tx.Create(payment).Error; err != nil {
-			return shared.ErrTransferToBankAccount
-		}
-
-		// wait 1s and do nothing
-		time.Sleep(1 * time.Second)
-		// pretend transfer to bank success
-		logger.Log.Info("transfer to bank successfully", "bankTransferData", data)
-
-		payment.Status = model.SUCCESS
-		if err := tx.Save(payment).Error; err != nil {
-			return shared.ErrTransferToBankAccount
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return err
+	if err := tx.Create(payment).Error; err != nil {
+		return shared.ErrTransferToBankAccount
 	}
 
-	// send event to message bus
-	g.Bus.Publish(event.BankTransferSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
+	// wait 1s and do nothing
+	time.Sleep(1 * time.Second)
+	// pretend transfer to bank success
+	logger.Log.Info("transfer to bank successfully", "bankTransferData", data)
+
+	payment.Status = model.SUCCESS
+	if err := tx.Save(payment).Error; err != nil {
+		return shared.ErrTransferToBankAccount
+	}
+
 	return nil
 }
 
-func (g *GatewayService) WithdrawalAccount(data WithdrawalCommand) error {
+func (g *GatewayService) WithdrawalAccount(tx *gorm.DB, data WithdrawalCommand) error {
 	if err := g.verifyBankAccount(); err != nil {
 		return err
 	}
 
-	var payment *model.Payment
+	payment := model.NewPayment(data.Amount, data.TransferID, model.OUT)
+	if err := tx.Create(payment).Error; err != nil {
+		return shared.ErrWithdrawalToBankAccount
+	}
 
-	err := g.DB.Transaction(func(tx *gorm.DB) error {
-		payment = model.NewPayment(data.Amount, data.TransferID, model.OUT)
-		if err := tx.Create(payment).Error; err != nil {
-			return shared.ErrWithdrawalToBankAccount
-		}
+	// wait 1s and do nothing
+	time.Sleep(1 * time.Second)
+	logger.Log.Info("withdrawal from bank successfully", "bankTransferData", data)
 
-		// wait 1s and do nothing
-		time.Sleep(1 * time.Second)
-		logger.Log.Info("withdrawal from bank successfully", "bankTransferData", data)
-
-		payment.Status = model.SUCCESS
-		if err := tx.Save(payment).Error; err != nil {
-			return shared.ErrWithdrawalToBankAccount
-		}
-
-		g.Bus.Publish(event.BankWithdrawalSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
-		return nil
-	})
-
-	if err != nil {
-		return err
+	payment.Status = model.SUCCESS
+	if err := tx.Save(payment).Error; err != nil {
+		return shared.ErrWithdrawalToBankAccount
 	}
 
 	return nil

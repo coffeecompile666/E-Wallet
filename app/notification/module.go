@@ -30,4 +30,5 @@ func (p *Notification) Init() {
 	p.Bus.Subscribe(event.WithdrawalSuccess{}, handler.NotifyWithdrawalSuccess)
 	p.Bus.Subscribe(event.TransferOutSuccess{}, handler.NotifyTransferOutSuccess)
 	p.Bus.Subscribe(event.TransferToUserSuccess{}, handler.NotyTransferToUserSuccess)
+	p.Bus.Subscribe(event3.UserRegistered{}, handler.SendRegisterOTP)
 }

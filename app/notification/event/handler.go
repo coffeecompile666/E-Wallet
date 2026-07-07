@@ -7,6 +7,7 @@ import (
 	service2 "app/notification/service"
 	"app/shared"
 	"app/shared/eventbus"
+	"app/shared/logger"
 	"app/wallet/event"
 	model2 "app/wallet/model"
 	"fmt"
@@ -26,11 +27,15 @@ func NewHandler(db *gorm.DB) *Handler {
 	}
 }
 
-func (n *Handler) SendRegisterOTP(to, name, otp string) error {
-	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
+func (n *Handler) SendRegisterOTP(e eventbus.Event) error {
+	name := e.(event2.UserRegistered).UserName
+	otpCode := e.(event2.UserRegistered).OTP
+	to := e.(event2.UserRegistered).Email
+
+	data := service2.NewOTPTemplateData(name, otpCode, model.OTPExpiredMinutes)
 	body, err := n.mail.InjectMailTemplate("otp_register.html", data)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
 	return n.mail.Send(to, "Xác nhận đăng ký tài khoản E-Wallet", body)
 }
@@ -43,8 +48,9 @@ func (n *Handler) SendForgotPasswordOTP(e eventbus.Event) error {
 	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
 	body, err := n.mail.InjectMailTemplate("otp_forgot_password.html", data)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
+	logger.Log.Info("OTP sent", "otp", otp)
 	return n.mail.Send(to, "Yêu cầu đặt lại mật khẩu E-Wallet", body)
 }
 
@@ -56,7 +62,7 @@ func (n *Handler) SendSetTxPinOTP(e eventbus.Event) error {
 	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
 	body, err := n.mail.InjectMailTemplate("otp_set_txpin.html", data)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
 	return n.mail.Send(to, "Thiết lập mã PIN giao dịch E-Wallet", body)
 }
@@ -66,7 +72,7 @@ func (n *Handler) NotifyDepositSuccess(e eventbus.Event) error {
 
 	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
 
 	msg := fmt.Sprintf("Giao dịch nạp tiền thành công. Số tiền: %d", transfer.Amount)
@@ -82,7 +88,7 @@ func (n *Handler) NotifyWithdrawalSuccess(e eventbus.Event) error {
 
 	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
 
 	msg := fmt.Sprintf("Giao dịch rút tiền thành công. Số tiền: %d", transfer.Amount)
@@ -98,7 +104,7 @@ func (n *Handler) NotifyTransferOutSuccess(e eventbus.Event) error {
 
 	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
-		return shared.ErrInternal
+		return err
 	}
 
 	msg := fmt.Sprintf("Giao dịch chuyển tiền thành công. Số tiền: %d", transfer.Amount)

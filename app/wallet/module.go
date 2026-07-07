@@ -33,6 +33,7 @@ func (w *Wallet) Init(g *gin.RouterGroup) {
 	depositService := service.NewDepositService(w.DB, w.Payment)
 	withdrawalService := service.NewWithdrawalService(w.DB, w.Payment)
 	transferOutService := service.NewTransferOutService(w.DB, w.Bus, w.Payment)
+	transferToUser := service.NewTransferToUserService(w.DB, w.Bus)
 
 	g.GET("/wallet/me", manageWalletService.GetWalletByUserID)
 	g.GET("/wallet/transaction", manageWalletService.GetTransactions)
@@ -40,6 +41,7 @@ func (w *Wallet) Init(g *gin.RouterGroup) {
 	g.POST("/wallet/withdrawal", withdrawalService.Withdraw)
 	g.POST("/wallet/transfer-out", transferOutService.TransferOut)
 	g.GET("/wallet/transfer/:id", manageWalletService.GetTransferByID)
+	g.POST("/wallet/transfer-to-user", transferToUser.Execute)
 
 	handler := event.NewWalletEventHandler(w.DB, w.Bus)
 	w.Bus.Subscribe(event3.BankWithdrawalSucceed{}, handler.HandleDeposit)

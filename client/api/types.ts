@@ -93,12 +93,14 @@ export interface DepositRequest {
   wallet_id: number;
   amount: number;
   bank_account_id: number;
+  tx_pin: string;
 }
 
 export interface WithdrawalRequest {
   wallet_id: number;
   amount: number;
   bank_account_id: number;
+  tx_pin: string;
 }
 
 export interface TransferOutRequest {
@@ -108,6 +110,14 @@ export interface TransferOutRequest {
   number: string;
   name: string;
   note: string;
+}
+
+export interface TransferToUserRequest {
+  wallet_id: number;
+  receiver_id: number;
+  amount: number;
+  note?: string;
+  tx_pin: string;
 }
 
 // Response Wrappers

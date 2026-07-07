@@ -11,18 +11,21 @@ import (
 type Module struct {
 	AuthenticationService *service.AuthenticationService
 	TransactionPinService *service.TransactionPinService
+	UserService           *service.UserService
 }
 
 func NewModule(db *gorm.DB, messageBus eventbus.EventBus) *Module {
 	return &Module{
 		AuthenticationService: &service.AuthenticationService{DB: db, Bus: messageBus},
 		TransactionPinService: &service.TransactionPinService{DB: db, Bus: messageBus},
+		UserService:           &service.UserService{DB: db},
 	}
 }
 
 func (m Module) Init(r *gin.RouterGroup) {
 	authenticationService := m.AuthenticationService
 	transactionPinService := m.TransactionPinService
+	userService := m.UserService
 
 	r.POST("/signup", authenticationService.Signup)
 	r.POST("/confirm-signup", authenticationService.ConfirmSignup)
@@ -36,4 +39,5 @@ func (m Module) Init(r *gin.RouterGroup) {
 	r.POST("/transaction-pin", transactionPinService.Create)
 	r.POST("/confirm-transaction-pin", transactionPinService.ConfirmCreate)
 	r.GET("/me", authenticationService.Me)
+	r.GET("/user/search", userService.Search)
 }

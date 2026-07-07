@@ -33,6 +33,7 @@ export default function Home() {
             name: userRes.data.Name,
             balance: walletRes.data.Balance - walletRes.data.LockedAmount,
             walletId: walletRes.data.id || (walletRes.data as any).ID,
+            hasTxPin: !!userRes.data.TransactionPin || !!(userRes.data as any).TransactionPIN,
           });
         } catch (err) {
           console.error('Failed to load session:', err);

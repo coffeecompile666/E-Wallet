@@ -57,4 +57,6 @@ var (
 	ErrInternal                           = Error{1005, 500, "internal error"}
 	ErrTransferToBankAccount              = Error{1045, 502, "transfer to bank account error"}
 	ErrWithdrawalToBankAccount            = Error{1046, 502, "withdrawal to bank account error"}
+	ErrTransactionPINNotSet               = Error{1047, 502, "transaction pin not set"}
+	ErrCannotTransferToSelf               = Error{1048, 502, "cannot transfer to self"}
 )
