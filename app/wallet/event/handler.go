@@ -1,9 +1,11 @@
-package service
+package event
 
 import (
+	"app/identity/event"
 	"app/identity/model"
-	"app/messages"
+	event2 "app/payment/event"
 	"app/shared"
+	"app/shared/eventbus"
 	model2 "app/wallet/model"
 	"errors"
 
@@ -11,45 +13,17 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-type WalletHandlerService struct {
+type WalletEventHandler struct {
 	DB  *gorm.DB
-	Bus *messages.MessageBus
+	Bus eventbus.EventBus
 }
 
-func NewWalletHandlerService(db *gorm.DB, bus *messages.MessageBus) *WalletHandlerService {
-	return &WalletHandlerService{DB: db, Bus: bus}
+func NewWalletEventHandler(db *gorm.DB, bus eventbus.EventBus) *WalletEventHandler {
+	return &WalletEventHandler{DB: db, Bus: bus}
 }
 
-type DepositSuccess struct {
-	WalletID   uint
-	TransferID uint
-}
-
-func (d DepositSuccess) Name() string {
-	return "wallet.deposit_success"
-}
-
-type WithdrawalSuccess struct {
-	WalletID   uint
-	TransferID uint
-}
-
-func (w WithdrawalSuccess) Name() string {
-	return "wallet.withdrawal_success"
-}
-
-type TransferOutSuccess struct {
-	WalletID       uint
-	TransferID     uint
-	JournalEntryID uint
-}
-
-func (t TransferOutSuccess) Name() string {
-	return "wallet.transfer_out_success"
-}
-
-func (h *WalletHandlerService) HandleDeposit(transferID uint) error {
-
+func (h *WalletEventHandler) HandleDeposit(e eventbus.Event) error {
+	transferID := e.(event2.BankWithdrawalSucceed).TransferID
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
 		// update transfer status
 		transfer := &model2.Transfer{}
@@ -101,7 +75,7 @@ func (h *WalletHandlerService) HandleDeposit(transferID uint) error {
 		}
 
 		// Send notification
-		h.Bus.Dispatch(DepositSuccess{
+		h.Bus.Publish(DepositSuccess{
 			WalletID:   wallet.ID,
 			TransferID: transfer.Amount,
 		})
@@ -112,71 +86,9 @@ func (h *WalletHandlerService) HandleDeposit(transferID uint) error {
 	return err
 }
 
-func (h *WalletHandlerService) HandleWithdrawal(transferID uint) error {
+func (h *WalletEventHandler) HandleTransferOut(e eventbus.Event) error {
+	transferID := e.(event2.BankTransferSucceed).TransferID
 
-	err := h.DB.Transaction(func(tx *gorm.DB) error {
-		// update transfer status
-		transfer := &model2.Transfer{}
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transferID).First(transfer).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		if transfer.IsComplete() {
-			return nil
-		}
-
-		if err := transfer.SetStatusCompleted(); err != nil {
-			return err
-		}
-
-		if err := tx.Save(transfer).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		// debit wallet
-		wallet := &model2.Wallet{}
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transfer.WalletID).Preload("Account").First(wallet).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		if err := wallet.Debit(transfer.Amount); err != nil {
-			return err
-		}
-
-		if err := tx.Save(wallet).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		// write to ledger
-		var systemBankAccount *model2.Account
-		if err := tx.Where("code = ?", model2.SystemBankAssetCode).First(&systemBankAccount).Error; err != nil {
-			return shared.ErrSystemAccountNotFound
-		}
-
-		journalEntry := model2.NewJournalEntry()
-		journalEntry.AddLedgerEntry(systemBankAccount.ID, transfer.Amount, model2.SideCredit)
-		journalEntry.AddLedgerEntry(wallet.Account.ID, transfer.Amount, model2.SideDebit)
-
-		if err := journalEntry.Validate(); err != nil {
-			return err
-		}
-
-		if err := tx.Create(journalEntry).Error; err != nil {
-			return shared.ErrCommon
-		}
-
-		h.Bus.Dispatch(WithdrawalSuccess{
-			WalletID:   wallet.ID,
-			TransferID: transfer.ID,
-		})
-
-		return nil
-	})
-
-	return err
-}
-
-func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
 		var transfer *model2.Transfer
 
@@ -229,7 +141,7 @@ func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
 			return shared.ErrCommon
 		}
 
-		h.Bus.Dispatch(TransferOutSuccess{
+		h.Bus.Publish(TransferOutSuccess{
 			WalletID:       wallet.ID,
 			TransferID:     transfer.ID,
 			JournalEntryID: journalEntry.ID,
@@ -245,7 +157,9 @@ func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
 	return nil
 }
 
-func (h *WalletHandlerService) HandleCreateWallet(userID uint) error {
+func (h *WalletEventHandler) HandleCreateWallet(e eventbus.Event) error {
+	userID := e.(event.UserSignupSuccess).UserID
+
 	err := h.DB.Transaction(func(tx *gorm.DB) error {
 		var user model.User
 		if err := tx.Where("id = ?", userID).First(&user).Error; err != nil {

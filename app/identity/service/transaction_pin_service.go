@@ -2,9 +2,10 @@ package service
 
 import (
 	"app/identity/dto"
+	"app/identity/event"
 	"app/identity/model"
-	"app/messages"
 	"app/shared"
+	"app/shared/eventbus"
 	"errors"
 	"net/http"
 
@@ -13,8 +14,8 @@ import (
 )
 
 type TransactionPinService struct {
-	DB         *gorm.DB
-	MessageBus *messages.MessageBus
+	DB  *gorm.DB
+	Bus eventbus.EventBus
 }
 
 func (s TransactionPinService) Create(c *gin.Context) {
@@ -42,7 +43,7 @@ func (s TransactionPinService) Create(c *gin.Context) {
 		return
 	}
 
-	s.MessageBus.Dispatch(dto.UserSetTXPINRequested{
+	s.Bus.Publish(event.UserSetTXPINRequested{
 		UserName: user.Name,
 		OTP:      code,
 		Email:    user.Email,

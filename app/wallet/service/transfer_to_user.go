@@ -2,8 +2,9 @@ package service
 
 import (
 	"app/identity/model"
-	"app/messages"
 	"app/shared"
+	"app/shared/eventbus"
+	"app/wallet/event"
 	model2 "app/wallet/model"
 	"errors"
 	"net/http"
@@ -15,10 +16,10 @@ import (
 
 type TransferToUserService struct {
 	DB  *gorm.DB
-	Bus *messages.MessageBus
+	Bus eventbus.EventBus
 }
 
-func NewTransferToUserService(db *gorm.DB, bus *messages.MessageBus) *TransferToUserService {
+func NewTransferToUserService(db *gorm.DB, bus eventbus.EventBus) *TransferToUserService {
 	return &TransferToUserService{
 		DB:  db,
 		Bus: bus,
@@ -30,16 +31,6 @@ type TransferToUserRequest struct {
 	ReceiverID uint   `json:"receiver_id" binding:"required"`
 	Amount     uint   `json:"amount" binding:"required"`
 	Note       string `json:"note"`
-}
-
-type TransferToUserSuccess struct {
-	WalletID         uint
-	ReceiverWalletID uint
-	TransferID       uint
-}
-
-func (t TransferToUserSuccess) Name() string {
-	return "wallet.transfer_to_user_success"
 }
 
 func (service *TransferToUserService) Execute(c *gin.Context) {
@@ -110,7 +101,7 @@ func (service *TransferToUserService) Execute(c *gin.Context) {
 			return shared.ErrCommon
 		}
 
-		service.Bus.Dispatch(TransferToUserSuccess{
+		service.Bus.Publish(event.TransferToUserSuccess{
 			WalletID:         wallet.ID,
 			ReceiverWalletID: receiverWallet.ID,
 			TransferID:       journalEntry.ID,

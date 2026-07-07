@@ -2,9 +2,10 @@ package service
 
 import (
 	"app/identity/dto"
+	"app/identity/event"
 	"app/identity/model"
-	"app/messages"
 	"app/shared"
+	"app/shared/eventbus"
 	"app/shared/logger"
 	"errors"
 	"net/http"
@@ -16,8 +17,8 @@ import (
 )
 
 type AuthenticationService struct {
-	DB         *gorm.DB
-	MessageBus *messages.MessageBus
+	DB  *gorm.DB
+	Bus eventbus.EventBus
 }
 
 func (s AuthenticationService) Signup(c *gin.Context) {
@@ -26,7 +27,6 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, shared.ErrBadRequest)
 		return
 	}
-	var event dto.UserRegistered
 	var otpID uint
 
 	err := s.DB.Transaction(func(tx *gorm.DB) error {
@@ -58,7 +58,7 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		}
 		otpID = otp.ID
 
-		event = dto.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID, UserName: user.Name}
+		s.Bus.Publish(event.UserRegistered{Email: user.Email, OTP: code, UserID: user.ID, UserName: user.Name})
 		return nil
 	})
 
@@ -76,7 +76,6 @@ func (s AuthenticationService) Signup(c *gin.Context) {
 		return
 	}
 
-	s.MessageBus.Dispatch(event)
 	c.JSON(http.StatusCreated, shared.Response[uint]{
 		Data: otpID,
 	})
@@ -141,7 +140,7 @@ func (s AuthenticationService) ConfirmSignup(c *gin.Context) {
 			return err
 		}
 
-		s.MessageBus.Dispatch(dto.UserSignupSuccess{
+		s.Bus.Publish(event.UserSignupSuccess{
 			UserID: user.ID,
 			Email:  user.Email,
 		})
@@ -310,7 +309,7 @@ func (s AuthenticationService) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	s.MessageBus.Dispatch(dto.UserForgotPasswordRequested{
+	s.Bus.Publish(event.UserForgotPasswordRequested{
 		UserName: user.Name,
 		Email:    user.Email,
 		EmailOTP: code,

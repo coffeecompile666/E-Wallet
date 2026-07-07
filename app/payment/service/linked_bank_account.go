@@ -1,9 +1,9 @@
 package service
 
 import (
-	"app/messages"
 	"app/payment/model"
 	"app/shared"
+	"app/shared/eventbus"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,10 +12,10 @@ import (
 
 type ManageLinkedBankAccountService struct {
 	DB  *gorm.DB
-	Bus *messages.MessageBus
+	Bus eventbus.EventBus
 }
 
-func NewManageLinkedBankAccountService(db *gorm.DB, bus *messages.MessageBus) *ManageLinkedBankAccountService {
+func NewManageLinkedBankAccountService(db *gorm.DB, bus eventbus.EventBus) *ManageLinkedBankAccountService {
 	return &ManageLinkedBankAccountService{DB: db, Bus: bus}
 }
 

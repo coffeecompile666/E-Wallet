@@ -2,7 +2,6 @@ package service
 
 import (
 	model2 "app/identity/model"
-	"app/messages"
 	"app/payment"
 	"app/payment/service"
 	"app/shared"
@@ -17,12 +16,11 @@ import (
 
 type DepositService struct {
 	DB      *gorm.DB
-	Bus     *messages.MessageBus
 	Payment *payment.Payment
 }
 
-func NewDepositService(db *gorm.DB, bus *messages.MessageBus, payment *payment.Payment) *DepositService {
-	return &DepositService{DB: db, Bus: bus, Payment: payment}
+func NewDepositService(db *gorm.DB, payment *payment.Payment) *DepositService {
+	return &DepositService{DB: db, Payment: payment}
 }
 
 type depositRequest struct {

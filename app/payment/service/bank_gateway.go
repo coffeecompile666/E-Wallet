@@ -1,9 +1,10 @@
 package service
 
 import (
-	"app/messages"
+	"app/payment/event"
 	"app/payment/model"
 	"app/shared"
+	"app/shared/eventbus"
 	"app/shared/logger"
 	"errors"
 	"time"
@@ -13,10 +14,10 @@ import (
 
 type GatewayService struct {
 	DB  *gorm.DB
-	Bus *messages.MessageBus
+	Bus eventbus.EventBus
 }
 
-func NewGatewayService(db *gorm.DB, bus *messages.MessageBus) *GatewayService {
+func NewGatewayService(db *gorm.DB, bus eventbus.EventBus) *GatewayService {
 	return &GatewayService{DB: db, Bus: bus}
 }
 
@@ -33,24 +34,6 @@ type WithdrawalCommand struct {
 	TransferID uint
 	Amount     uint
 	AccountID  uint
-}
-
-type BankTransferSucceed struct {
-	TransferID uint
-	Status     model.PaymentStatus
-}
-
-func (b BankTransferSucceed) Name() string {
-	return "bank_transfer_succeed"
-}
-
-type BankWithdrawalSucceed struct {
-	TransferID uint
-	Status     model.PaymentStatus
-}
-
-func (b BankWithdrawalSucceed) Name() string {
-	return "bank_withdrawal_succeed"
 }
 
 func (g *GatewayService) TransferToAccount(data BankTransferCommand) error {
@@ -85,7 +68,7 @@ func (g *GatewayService) TransferToAccount(data BankTransferCommand) error {
 	}
 
 	// send event to message bus
-	g.Bus.Dispatch(BankTransferSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
+	g.Bus.Publish(event.BankTransferSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
 	return nil
 }
 
@@ -111,7 +94,7 @@ func (g *GatewayService) WithdrawalAccount(data WithdrawalCommand) error {
 			return shared.ErrWithdrawalToBankAccount
 		}
 
-		g.Bus.Dispatch(BankWithdrawalSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
+		g.Bus.Publish(event.BankWithdrawalSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
 		return nil
 	})
 

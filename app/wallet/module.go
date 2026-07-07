@@ -1,8 +1,11 @@
 package wallet
 
 import (
-	"app/messages"
+	event2 "app/identity/event"
 	"app/payment"
+	event3 "app/payment/event"
+	"app/shared/eventbus"
+	"app/wallet/event"
 	"app/wallet/service"
 
 	"github.com/gin-gonic/gin"
@@ -11,23 +14,23 @@ import (
 
 type Wallet struct {
 	DB            *gorm.DB
-	Bus           *messages.MessageBus
+	Bus           eventbus.EventBus
 	Payment       *payment.Payment
-	WalletHandler *service.WalletHandlerService
+	WalletHandler *event.WalletEventHandler
 }
 
-func NewModule(db *gorm.DB, bus *messages.MessageBus, payment *payment.Payment) *Wallet {
+func NewModule(db *gorm.DB, bus eventbus.EventBus, payment *payment.Payment) *Wallet {
 	return &Wallet{
 		DB:            db,
 		Bus:           bus,
 		Payment:       payment,
-		WalletHandler: service.NewWalletHandlerService(db, bus),
+		WalletHandler: event.NewWalletEventHandler(db, bus),
 	}
 }
 
-func (w *Wallet) Bootstrap(g *gin.RouterGroup) {
-	manageWalletService := service.NewManageWalletService(w.DB, w.Bus)
-	depositService := service.NewDepositService(w.DB, w.Bus, w.Payment)
+func (w *Wallet) Init(g *gin.RouterGroup) {
+	manageWalletService := service.NewManageWalletService(w.DB)
+	depositService := service.NewDepositService(w.DB, w.Payment)
 	withdrawalService := service.NewWithdrawalService(w.DB, w.Payment)
 	transferOutService := service.NewTransferOutService(w.DB, w.Bus, w.Payment)
 
@@ -37,4 +40,9 @@ func (w *Wallet) Bootstrap(g *gin.RouterGroup) {
 	g.POST("/wallet/withdrawal", withdrawalService.Withdraw)
 	g.POST("/wallet/transfer-out", transferOutService.TransferOut)
 	g.GET("/wallet/transfer/:id", manageWalletService.GetTransferByID)
+
+	handler := event.NewWalletEventHandler(w.DB, w.Bus)
+	w.Bus.Subscribe(event3.BankWithdrawalSucceed{}, handler.HandleDeposit)
+	w.Bus.Subscribe(event3.BankTransferSucceed{}, handler.HandleTransferOut)
+	w.Bus.Subscribe(event2.UserSignupSuccess{}, handler.HandleCreateWallet)
 }

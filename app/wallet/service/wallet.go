@@ -1,7 +1,6 @@
 package service
 
 import (
-	"app/messages"
 	"app/shared"
 	model2 "app/wallet/model"
 	"errors"
@@ -12,21 +11,20 @@ import (
 	"gorm.io/gorm"
 )
 
-type ManageWalletService struct {
-	DB  *gorm.DB
-	Bus *messages.MessageBus
+type WalletService struct {
+	DB *gorm.DB
 }
 
-func NewManageWalletService(db *gorm.DB, bus *messages.MessageBus) *ManageWalletService {
-	return &ManageWalletService{DB: db, Bus: bus}
+func NewManageWalletService(db *gorm.DB) *WalletService {
+	return &WalletService{DB: db}
 }
 
-func (mws *ManageWalletService) GetWalletByUserID(c *gin.Context) {
+func (w *WalletService) GetWalletByUserID(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
 
 	var wallet model2.Wallet
 
-	if err := mws.DB.Where("owner_id", userID).First(&wallet).Error; err != nil {
+	if err := w.DB.Where("owner_id", userID).First(&wallet).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, shared.ErrNotFound)
 			return
@@ -40,7 +38,7 @@ func (mws *ManageWalletService) GetWalletByUserID(c *gin.Context) {
 	})
 }
 
-func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
+func (w *WalletService) GetTransactions(c *gin.Context) {
 	start, end, err := validateStartEnd(c.Query("start"), c.Query("end"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err)
@@ -56,7 +54,7 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
 
 	var wallet model2.Wallet
-	if err := mws.DB.First(&wallet, walletID).Error; err != nil {
+	if err := w.DB.First(&wallet, walletID).Error; err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrNotFound)
 		return
 	}
@@ -67,7 +65,7 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 	}
 
 	var txs []*model2.Transfer
-	if err := mws.DB.
+	if err := w.DB.
 		Where("wallet_id = ?", walletID).
 		Order("created_at DESC").
 		Offset(int(start)).
@@ -84,9 +82,9 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 	})
 }
 
-func (mws *ManageWalletService) GetTransferByID(c *gin.Context) {
+func (w *WalletService) GetTransferByID(c *gin.Context) {
 	transfer := &model2.Transfer{}
-	if err := mws.DB.First(transfer, c.Param("id")).Error; err != nil {
+	if err := w.DB.First(transfer, c.Param("id")).Error; err != nil {
 		c.JSON(http.StatusBadRequest, shared.ErrNotFound)
 		return
 	}

@@ -16,7 +16,7 @@ type OTPTemplateData struct {
 	ExpireMinutes int
 }
 
-func newOTPTemplateData(name, otp string, expireMinutes int) OTPTemplateData {
+func NewOTPTemplateData(name, otp string, expireMinutes int) OTPTemplateData {
 	return OTPTemplateData{
 		baseTemplateData: baseTemplateData{
 			AppName: "E-Wallet",

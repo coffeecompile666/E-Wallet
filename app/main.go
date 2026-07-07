@@ -1,13 +1,12 @@
 package main
 
 import (
-	"app/event"
 	"app/identity"
-	"app/messages"
-	service2 "app/notification/service"
+	"app/notification"
 	"app/payment"
 	"app/shared"
 	"app/shared/database"
+	"app/shared/eventbus"
 	"app/shared/logger"
 	"app/shared/middleware"
 	"app/wallet"
@@ -61,19 +60,18 @@ func main() {
 		Log.Error(ErrFailedStartServer, "err", err)
 	}
 
-	messageBus := messages.NewMessageBus()
+	eventBus := eventbus.NewInMemoryEventBus()
 
 	v1 := router.Group("/api/v1")
-	identityModule := identity.NewModule(db, messageBus)
-	identityModule.Boostrap(v1)
-	paymentModule := payment.NewModule(db, messageBus)
+	identityModule := identity.NewModule(db, eventBus)
+	identityModule.Init(v1)
+	paymentModule := payment.NewModule(db, eventBus)
 	paymentModule.Bootstrap(v1)
-	walletModule := wallet.NewModule(db, messageBus, paymentModule)
-	walletModule.Bootstrap(v1)
-	notificationModule := service2.NewNotificationService(db)
+	walletModule := wallet.NewModule(db, eventBus, paymentModule)
+	walletModule.Init(v1)
 
-	handler := event.NewHandler(walletModule, identityModule, messageBus, notificationModule)
-	handler.Register()
+	notificationModule := notification.NewNotification(db, eventBus)
+	notificationModule.Init()
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)
 	err = router.Run(addr)

@@ -21,13 +21,13 @@ var templates = template.Must(
 	),
 )
 
-type mailService struct {
+type MailService struct {
 	dialer *mail.Dialer
 	from   string
 }
 
-func newMailService() *mailService {
-	return &mailService{
+func NewMailService() *MailService {
+	return &MailService{
 		from: "noreply@example.com",
 		dialer: mail.NewDialer(
 			"smtp.gmail.com",
@@ -38,7 +38,7 @@ func newMailService() *mailService {
 	}
 }
 
-func (m *mailService) send(to, subject, body string) error {
+func (m *MailService) Send(to, subject, body string) error {
 	msg := mail.NewMessage()
 
 	msg.SetHeader("From", m.from)
@@ -49,7 +49,7 @@ func (m *mailService) send(to, subject, body string) error {
 	return m.dialer.DialAndSend(msg)
 }
 
-func (m *mailService) injectMailTemplate(name string, data any) (string, error) {
+func (m *MailService) InjectMailTemplate(name string, data any) (string, error) {
 	var buf bytes.Buffer
 
 	err := templates.ExecuteTemplate(&buf, name, data)

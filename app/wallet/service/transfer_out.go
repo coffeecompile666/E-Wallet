@@ -2,10 +2,10 @@ package service
 
 import (
 	model2 "app/identity/model"
-	"app/messages"
 	"app/payment"
 	"app/payment/service"
 	"app/shared"
+	"app/shared/eventbus"
 	"app/wallet/model"
 	"net/http"
 
@@ -16,11 +16,11 @@ import (
 
 type TransferOutService struct {
 	DB      *gorm.DB
-	Bus     *messages.MessageBus
+	Bus     eventbus.EventBus
 	Payment *payment.Payment
 }
 
-func NewTransferOutService(db *gorm.DB, bus *messages.MessageBus, payment *payment.Payment) *TransferOutService {
+func NewTransferOutService(db *gorm.DB, bus eventbus.EventBus, payment *payment.Payment) *TransferOutService {
 	return &TransferOutService{DB: db, Bus: bus, Payment: payment}
 }
 

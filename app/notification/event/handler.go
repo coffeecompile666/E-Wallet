@@ -1,64 +1,70 @@
-package service
+package event
 
 import (
+	event2 "app/identity/event"
 	"app/identity/model"
 	notifModel "app/notification/model"
+	service2 "app/notification/service"
 	"app/shared"
+	"app/shared/eventbus"
+	"app/wallet/event"
 	model2 "app/wallet/model"
-	"app/wallet/service"
 	"fmt"
 
 	"gorm.io/gorm"
 )
 
-type Channel string
-
-const (
-	Email Channel = "email"
-	App   Channel = "app"
-)
-
-type NotificationService struct {
-	mail *mailService
+type Handler struct {
+	mail *service2.MailService
 	db   *gorm.DB
 }
 
-func NewNotificationService(db *gorm.DB) *NotificationService {
-	return &NotificationService{
-		mail: newMailService(),
+func NewHandler(db *gorm.DB) *Handler {
+	return &Handler{
+		mail: service2.NewMailService(),
 		db:   db,
 	}
 }
 
-func (n *NotificationService) SendRegisterOTP(to, name, otp string) error {
-	data := newOTPTemplateData(name, otp, model.OTPExpiredMinutes)
-	body, err := n.mail.injectMailTemplate("otp_register.html", data)
+func (n *Handler) SendRegisterOTP(to, name, otp string) error {
+	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
+	body, err := n.mail.InjectMailTemplate("otp_register.html", data)
 	if err != nil {
 		return shared.ErrInternal
 	}
-	return n.mail.send(to, "Xác nhận đăng ký tài khoản E-Wallet", body)
+	return n.mail.Send(to, "Xác nhận đăng ký tài khoản E-Wallet", body)
 }
 
-func (n *NotificationService) SendForgotPasswordOTP(to, name, otp string) error {
-	data := newOTPTemplateData(name, otp, model.OTPExpiredMinutes)
-	body, err := n.mail.injectMailTemplate("otp_forgot_password.html", data)
+func (n *Handler) SendForgotPasswordOTP(e eventbus.Event) error {
+	name := e.(event2.UserForgotPasswordRequested).UserName
+	otp := e.(event2.UserForgotPasswordRequested).EmailOTP
+	to := e.(event2.UserForgotPasswordRequested).Email
+
+	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
+	body, err := n.mail.InjectMailTemplate("otp_forgot_password.html", data)
 	if err != nil {
 		return shared.ErrInternal
 	}
-	return n.mail.send(to, "Yêu cầu đặt lại mật khẩu E-Wallet", body)
+	return n.mail.Send(to, "Yêu cầu đặt lại mật khẩu E-Wallet", body)
 }
 
-func (n *NotificationService) SendSetTxPinOTP(to, name, otp string) error {
-	data := newOTPTemplateData(name, otp, model.OTPExpiredMinutes)
-	body, err := n.mail.injectMailTemplate("otp_set_txpin.html", data)
+func (n *Handler) SendSetTxPinOTP(e eventbus.Event) error {
+	name := e.(event2.UserSetTXPINRequested).UserName
+	otp := e.(event2.UserSetTXPINRequested).OTP
+	to := e.(event2.UserSetTXPINRequested).Email
+
+	data := service2.NewOTPTemplateData(name, otp, model.OTPExpiredMinutes)
+	body, err := n.mail.InjectMailTemplate("otp_set_txpin.html", data)
 	if err != nil {
 		return shared.ErrInternal
 	}
-	return n.mail.send(to, "Thiết lập mã PIN giao dịch E-Wallet", body)
+	return n.mail.Send(to, "Thiết lập mã PIN giao dịch E-Wallet", body)
 }
 
-func (n *NotificationService) NotifyDepositSuccess(e service.DepositSuccess) error {
-	transfer, err := n.getTransferByID(e.TransferID)
+func (n *Handler) NotifyDepositSuccess(e eventbus.Event) error {
+	transferID := e.(event.DepositSuccess).TransferID
+
+	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
 		return shared.ErrInternal
 	}
@@ -71,8 +77,10 @@ func (n *NotificationService) NotifyDepositSuccess(e service.DepositSuccess) err
 	return nil
 }
 
-func (n *NotificationService) NotifyWithdrawalSuccess(e service.WithdrawalSuccess) error {
-	transfer, err := n.getTransferByID(e.TransferID)
+func (n *Handler) NotifyWithdrawalSuccess(e eventbus.Event) error {
+	transferID := e.(event.WithdrawalSuccess).TransferID
+
+	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
 		return shared.ErrInternal
 	}
@@ -85,8 +93,10 @@ func (n *NotificationService) NotifyWithdrawalSuccess(e service.WithdrawalSucces
 	return nil
 }
 
-func (n *NotificationService) NotifyTransferOutSuccess(e service.TransferOutSuccess) error {
-	transfer, err := n.getTransferByID(e.TransferID)
+func (n *Handler) NotifyTransferOutSuccess(e eventbus.Event) error {
+	transferID := e.(event.TransferOutSuccess).TransferID
+
+	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
 		return shared.ErrInternal
 	}
@@ -99,8 +109,11 @@ func (n *NotificationService) NotifyTransferOutSuccess(e service.TransferOutSucc
 	return nil
 }
 
-func (n *NotificationService) NotyTransferToUserSuccess(e service.TransferToUserSuccess) error {
-	transfer, err := n.getTransferByID(e.TransferID)
+func (n *Handler) NotyTransferToUserSuccess(e eventbus.Event) error {
+	transferID := e.(event.TransferToUserSuccess).TransferID
+	receiverWalletID := e.(event.TransferToUserSuccess).ReceiverWalletID
+
+	transfer, err := n.getTransferByID(transferID)
 	if err != nil {
 		return shared.ErrInternal
 	}
@@ -110,7 +123,7 @@ func (n *NotificationService) NotyTransferToUserSuccess(e service.TransferToUser
 		return shared.ErrInternal
 	}
 
-	receiver, err := n.getUserByWalletID(e.ReceiverWalletID)
+	receiver, err := n.getUserByWalletID(receiverWalletID)
 	if err != nil {
 		return shared.ErrInternal
 	}
@@ -128,14 +141,14 @@ func (n *NotificationService) NotyTransferToUserSuccess(e service.TransferToUser
 	return nil
 }
 
-func (n *NotificationService) sendAppNotification(userID uint, content string) error {
+func (n *Handler) sendAppNotification(userID uint, content string) error {
 	if err := n.db.Create(&notifModel.Notification{UserID: userID, Content: content}).Error; err != nil {
 		return shared.ErrInternal
 	}
 	return nil
 }
 
-func (n *NotificationService) getTransferByID(transferID uint) (model2.Transfer, error) {
+func (n *Handler) getTransferByID(transferID uint) (model2.Transfer, error) {
 	transfer := model2.Transfer{}
 	if err := n.db.First(&transfer, transferID).Error; err != nil {
 		return transfer, shared.ErrInternal
@@ -143,7 +156,7 @@ func (n *NotificationService) getTransferByID(transferID uint) (model2.Transfer,
 	return transfer, nil
 }
 
-func (n *NotificationService) getWalletByID(walletID uint) (model2.Wallet, error) {
+func (n *Handler) getWalletByID(walletID uint) (model2.Wallet, error) {
 	wallet := model2.Wallet{}
 	if err := n.db.First(&wallet, walletID).Error; err != nil {
 		return wallet, shared.ErrInternal
@@ -151,7 +164,7 @@ func (n *NotificationService) getWalletByID(walletID uint) (model2.Wallet, error
 	return wallet, nil
 }
 
-func (n *NotificationService) getJournalEntryByID(journalEntryID uint) (model2.JournalEntry, error) {
+func (n *Handler) getJournalEntryByID(journalEntryID uint) (model2.JournalEntry, error) {
 	journalEntry := model2.JournalEntry{}
 	if err := n.db.First(&journalEntry, journalEntryID).Error; err != nil {
 		return model2.JournalEntry{}, shared.ErrInternal
@@ -159,7 +172,7 @@ func (n *NotificationService) getJournalEntryByID(journalEntryID uint) (model2.J
 	return journalEntry, nil
 }
 
-func (n *NotificationService) getUserByWalletID(walletID uint) (model.User, error) {
+func (n *Handler) getUserByWalletID(walletID uint) (model.User, error) {
 	wallet, err := n.getWalletByID(walletID)
 	if err != nil {
 		return model.User{}, shared.ErrInternal

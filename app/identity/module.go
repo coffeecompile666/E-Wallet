@@ -2,7 +2,7 @@ package identity
 
 import (
 	"app/identity/service"
-	"app/messages"
+	"app/shared/eventbus"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -13,14 +13,14 @@ type Module struct {
 	TransactionPinService *service.TransactionPinService
 }
 
-func NewModule(db *gorm.DB, messageBus *messages.MessageBus) *Module {
+func NewModule(db *gorm.DB, messageBus eventbus.EventBus) *Module {
 	return &Module{
-		AuthenticationService: &service.AuthenticationService{DB: db, MessageBus: messageBus},
-		TransactionPinService: &service.TransactionPinService{DB: db, MessageBus: messageBus},
+		AuthenticationService: &service.AuthenticationService{DB: db, Bus: messageBus},
+		TransactionPinService: &service.TransactionPinService{DB: db, Bus: messageBus},
 	}
 }
 
-func (m Module) Boostrap(r *gin.RouterGroup) {
+func (m Module) Init(r *gin.RouterGroup) {
 	authenticationService := m.AuthenticationService
 	transactionPinService := m.TransactionPinService
 

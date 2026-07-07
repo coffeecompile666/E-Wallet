@@ -1,8 +1,8 @@
 package payment
 
 import (
-	"app/messages"
 	"app/payment/service"
+	"app/shared/eventbus"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -10,11 +10,11 @@ import (
 
 type Payment struct {
 	DB      *gorm.DB
-	Bus     *messages.MessageBus
+	Bus     eventbus.EventBus
 	Gateway *service.GatewayService
 }
 
-func NewModule(db *gorm.DB, bus *messages.MessageBus) *Payment {
+func NewModule(db *gorm.DB, bus eventbus.EventBus) *Payment {
 	gatewayService := service.NewGatewayService(db, bus)
 	return &Payment{
 		DB:      db,
