@@ -55,7 +55,7 @@ func (t *TransferOutService) TransferOut(c *gin.Context) {
 
 		// lock wallet
 		var wallet model.Wallet
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND user_id = ?", req.WalletID, userID).First(&wallet).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND owner_id = ?", req.WalletID, userID).First(&wallet).Error; err != nil {
 			return shared.ErrWalletNotFound
 		}
 

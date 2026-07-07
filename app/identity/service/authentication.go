@@ -376,3 +376,13 @@ func (s AuthenticationService) ConfirmForgotPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, shared.Empty{})
 }
+
+func (s AuthenticationService) Me(c *gin.Context) {
+	userID := c.MustGet(shared.ContextUserID).(uint)
+	user := &model.User{}
+	if err := s.DB.First(user, userID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, shared.ErrUserNotFound)
+	}
+
+	c.JSON(http.StatusOK, shared.Response[*model.User]{Data: user})
+}

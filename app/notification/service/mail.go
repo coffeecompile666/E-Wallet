@@ -2,7 +2,6 @@ package service
 
 import (
 	"app/shared"
-	"app/shared/logger"
 	"bytes"
 	"embed"
 	"html/template"
@@ -28,7 +27,6 @@ type mailService struct {
 }
 
 func newMailService() *mailService {
-	logger.Log.Info("Initializing mail service", "password_set", shared.Configs.MailPassword != "")
 	return &mailService{
 		from: "noreply@example.com",
 		dialer: mail.NewDialer(

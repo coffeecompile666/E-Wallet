@@ -134,7 +134,7 @@ func (service *TransferToUserService) getWalletForUpdate(tx *gorm.DB, userID uin
 		Clauses(clause.Locking{
 			Strength: "UPDATE",
 		}).
-		Where("id = ? AND user_id = ?", walletID, userID).
+		Where("id = ? AND owner_id = ?", walletID, userID).
 		Preload("Account").
 		First(&wallet).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

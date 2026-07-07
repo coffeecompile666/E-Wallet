@@ -8,18 +8,18 @@ import {
 
 export const getLinkedBankAccounts = (): Promise<ResponseWrapper<LinkedBankAccount[]>> => {
   return handleCommonError(
-    request.get<ResponseWrapper<LinkedBankAccount[]>>('/payment').then((res) => res.data)
+    request.get<ResponseWrapper<LinkedBankAccount[]>>('/payment/linked_bank_account').then((res) => res.data)
   );
 };
 
 export const addLinkedBankAccount = (data: AddLinkedBankAccountRequest): Promise<void> => {
   return handleCommonError(
-    request.post('/payment', data).then(() => undefined)
+    request.post('/payment/linked_bank_account', data).then(() => undefined)
   );
 };
 
 export const removeLinkedBankAccount = (id: number): Promise<void> => {
   return handleCommonError(
-    request.delete(`/payment/${id}`).then(() => undefined)
+    request.delete(`/payment/linked_bank_account/${id}`).then(() => undefined)
   );
 };

@@ -13,6 +13,7 @@ type SystemAccountCode string
 
 const (
 	SystemBankAssetCode SystemAccountCode = "system_bank_asset"
+	SystemCashCode      SystemAccountCode = "system_cash"
 )
 
 type Account struct {

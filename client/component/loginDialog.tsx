@@ -9,7 +9,8 @@ import Button from '@/component/atomic/button';
 import PinInput from '@/component/atomic/pinInput';
 import { useAppStore } from '@/store/appStore';
 import { useSignupStore } from '@/store/signupStore';
-import { signup, verifyOTP, confirmSignup, signin } from '@/api/auth';
+import { signup, verifyOTP, confirmSignup, signin, getMe } from '@/api/auth';
+import { getWalletMe } from '@/api/wallet';
 import { addAlert } from '@/help/addAlert';
 
 type LoginDialogProps = {
@@ -102,14 +103,17 @@ export default function LoginDialog({ open, onClose }: LoginDialogProps) {
       if (res?.data?.access_token) {
         localStorage.setItem('access_token', res.data.access_token);
         
-        const userName = loginEmail.split('@')[0];
-        const displayName = userName.charAt(0).toUpperCase() + userName.slice(1);
+        const [userRes, walletRes] = await Promise.all([
+          getMe(),
+          getWalletMe(),
+        ]);
 
         setUser({
-          id: 1, // Mock or parsed ID
-          email: loginEmail,
-          name: displayName,
-          balance: 24500000, // starting balance in VND
+          id: userRes.data.id || (userRes.data as any).ID,
+          email: userRes.data.Email,
+          name: userRes.data.Name,
+          balance: walletRes.data.Balance - walletRes.data.LockedAmount,
+          walletId: walletRes.data.id || (walletRes.data as any).ID,
         });
 
         addAlert(<AlertContent>Đăng nhập thành công!</AlertContent>);

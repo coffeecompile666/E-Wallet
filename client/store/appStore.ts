@@ -8,6 +8,7 @@ type User = {
   email: string;
   name: string;
   balance: number;
+  walletId: number;
 };
 
 type AppState = {

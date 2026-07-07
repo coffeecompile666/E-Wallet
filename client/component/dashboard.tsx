@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { 
   Wallet, 
-  Send, 
   PlusCircle, 
   ArrowUpRight, 
   ArrowDownLeft, 
@@ -12,37 +11,86 @@ import {
   Eye, 
   EyeOff, 
   User, 
-  TrendingUp, 
   ArrowRight,
-  Shield,
   Clock,
   CircleCheck,
   ChevronRight
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
-import { logout } from '@/api/auth';
 import { addAlert } from '@/help/addAlert';
 import Button from '@/component/atomic/button';
 import Card from '@/component/atomic/card';
 import Input from '@/component/atomic/input';
 import Badge from '@/component/atomic/badge';
-import PinInput from '@/component/atomic/pinInput';
-import AppDialog from '@/component/atomic/dialog';
+import { logout } from '@/api/auth';
+import { getLinkedBankAccounts } from '@/api/payment';
+import { getTransactions } from '@/api/wallet';
+import { LinkedBankAccount, Transfer } from '@/api/types';
 
-type Transaction = {
-  id: string;
-  title: string;
-  amount: number;
-  type: 'income' | 'expense';
-  time: string;
-  status: 'success' | 'pending' | 'failed';
-};
+// Modular Subcomponents
+import BankAccountCard from './dashboard/BankAccountCard';
+import DepositModal from './dashboard/DepositModal';
+import WithdrawModal from './dashboard/WithdrawModal';
+import PinVerifyModal from './dashboard/PinVerifyModal';
 
 export default function Dashboard() {
   const user = useAppStore((state) => state.user);
   const setUser = useAppStore((state) => state.setUser);
   const clearUser = useAppStore((state) => state.clearUser);
   const setAppDialog = useAppStore((state) => state.setAppDialog);
+
+  // States
+  const [showBalance, setShowBalance] = useState(true);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [isLinkBankOpenForce, setIsLinkBankOpenForce] = useState(false); // Helper to open Link Bank Modal from Deposit Modal
+  const [bankAccounts, setBankAccounts] = useState<LinkedBankAccount[]>([]);
+  const [transactions, setTransactions] = useState<Transfer[]>([]);
+
+  // Transfer Form state
+  const [receiver, setReceiver] = useState('');
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferMessage, setTransferMessage] = useState('Chuyển tiền ví Tingting');
+  const [errors, setErrors] = useState<{ receiver?: string; amount?: string }>({});
+
+  const formatVND = (num: number) => {
+    return num.toLocaleString('vi-VN') + ' đ';
+  };
+
+  const fetchBankAccounts = async () => {
+    try {
+      const res = await getLinkedBankAccounts();
+      setBankAccounts(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch linked bank accounts:', err);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    const walletId = user?.walletId || (user as any)?.WalletID || (user as any)?.wallet_id;
+    if (!walletId) return;
+    try {
+      const res = await getTransactions({
+        wallet_id: walletId,
+        start: 0,
+        end: 20,
+      });
+      setTransactions(res.items || []);
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchBankAccounts();
+  }, []);
+
+  useEffect(() => {
+    const walletId = user?.walletId || (user as any)?.WalletID || (user as any)?.wallet_id;
+    if (walletId) {
+      fetchTransactions();
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -54,89 +102,8 @@ export default function Dashboard() {
     }
   };
 
-  // UI state
-  const [showBalance, setShowBalance] = useState(true);
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('500000');
-  
-  // Transfer Form state
-  const [receiver, setReceiver] = useState('');
-  const [transferAmount, setTransferAmount] = useState('');
-  const [transferMessage, setTransferMessage] = useState('Chuyển tiền ví Tingting');
-  
-  // Error states
-  const [errors, setErrors] = useState<{ receiver?: string; amount?: string }>({});
-
-  // Mock Transaction Log State
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: 'tx-1',
-      title: 'Nạp tiền từ Vietcombank',
-      amount: 10000000,
-      type: 'income',
-      time: '14:23 - 04/07/2026',
-      status: 'success',
-    },
-    {
-      id: 'tx-2',
-      title: 'Thanh toán hóa đơn điện',
-      amount: 850000,
-      type: 'expense',
-      time: '09:12 - 03/07/2026',
-      status: 'success',
-    },
-    {
-      id: 'tx-3',
-      title: 'Nhận tiền từ Nguyen Van B',
-      amount: 1500000,
-      type: 'income',
-      time: '18:45 - 01/07/2026',
-      status: 'success',
-    },
-    {
-      id: 'tx-4',
-      title: 'Mua thẻ điện thoại Viettel',
-      amount: 100000,
-      type: 'expense',
-      time: '12:00 - 30/06/2026',
-      status: 'success',
-    },
-  ]);
-
-  if (!user) return null;
-
-  const formatVND = (num: number) => {
-    return num.toLocaleString('vi-VN') + ' đ';
-  };
-
-  const handleDeposit = () => {
-    const amt = parseFloat(depositAmount);
-    if (isNaN(amt) || amt <= 0) {
-      addAlert(<>Số tiền nạp không hợp lệ</>);
-      return;
-    }
-
-    const updatedBalance = user.balance + amt;
-    setUser({ ...user, balance: updatedBalance });
-
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      title: 'Nạp tiền vào ví',
-      amount: amt,
-      type: 'income',
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString('vi-VN'),
-      status: 'success',
-    };
-
-    setTransactions([newTx, ...transactions]);
-    setIsDepositOpen(false);
-    addAlert(<>Đã nạp thành công {formatVND(amt)} vào ví!</>);
-  };
-
   const startTransfer = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validations
     const tempErrors: typeof errors = {};
     if (!receiver) {
       tempErrors.receiver = 'Vui lòng nhập Email hoặc Số điện thoại người nhận';
@@ -145,14 +112,13 @@ export default function Dashboard() {
     const amt = parseFloat(transferAmount);
     if (isNaN(amt) || amt <= 0) {
       tempErrors.amount = 'Số tiền chuyển không hợp lệ';
-    } else if (amt > user.balance) {
+    } else if (amt > user!.balance) {
       tempErrors.amount = 'Số tiền vượt quá số dư khả dụng';
     }
 
     setErrors(tempErrors);
     if (Object.keys(tempErrors).length > 0) return;
 
-    // Trigger PIN verification dialog
     openPinVerification(amt);
   };
 
@@ -168,27 +134,13 @@ export default function Dashboard() {
   };
 
   const confirmTransfer = (amt: number) => {
-    // Process transfer
+    if (!user) return;
     const updatedBalance = user.balance - amt;
     setUser({ ...user, balance: updatedBalance });
 
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      title: `Chuyển tiền đến ${receiver}`,
-      amount: amt,
-      type: 'expense',
-      time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date().toLocaleDateString('vi-VN'),
-      status: 'success',
-    };
-
-    setTransactions([newTx, ...transactions]);
-    
-    // Clear forms
     setReceiver('');
     setTransferAmount('');
     setTransferMessage('Chuyển tiền ví Tingting');
-    
-    // Close modal
     setAppDialog(undefined);
     
     addAlert(
@@ -197,7 +149,10 @@ export default function Dashboard() {
         <span>Giao dịch chuyển tiền {formatVND(amt)} đã hoàn thành!</span>
       </AlertContent>
     );
+    fetchTransactions();
   };
+
+  if (!user) return null;
 
   return (
     <Container>
@@ -223,9 +178,8 @@ export default function Dashboard() {
       </Navbar>
 
       <DashboardGrid>
-        {/* Left Column: Wallet Balance & Actions + Quick Transfer */}
+        {/* Left Column: Wallet Balance & Actions + Quick Transfer + Link Bank */}
         <LeftCol>
-          {/* Balance card */}
           <BalanceCard>
             <BalanceHeader>
               <BalanceTitle>Số dư khả dụng</BalanceTitle>
@@ -245,7 +199,7 @@ export default function Dashboard() {
                 <span>Nạp tiền</span>
               </ActionButton>
               
-              <ActionButton onClick={() => addAlert(<>Tính năng Rút tiền đang được nâng cấp!</>)}>
+              <ActionButton onClick={() => setIsWithdrawOpen(true)}>
                 <ActionIconWrapper $color="var(--primary)">
                   <ArrowUpRight size={20} />
                 </ActionIconWrapper>
@@ -291,154 +245,91 @@ export default function Dashboard() {
               </Button>
             </Form>
           </Card>
+
+          {/* Linked Bank Accounts Card */}
+          <BankAccountCard 
+            bankAccounts={bankAccounts} 
+            onRefresh={fetchBankAccounts} 
+          />
         </LeftCol>
 
         {/* Right Column: Transaction Log */}
         <RightCol>
           <Card title="Lịch sử giao dịch gần đây" extra={<Badge variant="info"><Clock size={12} style={{ marginRight: '4px' }} /> 24/7</Badge>}>
-            <TransactionList>
-              {transactions.map((tx) => (
-                <TransactionItem key={tx.id}>
-                  <TxIconWrapper $type={tx.type}>
-                    {tx.type === 'income' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
-                  </TxIconWrapper>
-                  
-                  <TxDetails>
-                    <TxTitle>{tx.title}</TxTitle>
-                    <TxTime>{tx.time}</TxTime>
-                  </TxDetails>
+            {transactions.length === 0 ? (
+              <EmptyTransactions>
+                <Clock size={32} color="var(--text-muted)" />
+                <p>Chưa có giao dịch nào được thực hiện.</p>
+              </EmptyTransactions>
+            ) : (
+              <TransactionList>
+                {transactions.map((tx, index) => (
+                  <TransactionItem key={tx.id || (tx as any).ID || index}>
+                    <TxIconWrapper $type={tx.Type === 'DEPOSIT' ? 'income' : 'expense'}>
+                      {tx.Type === 'DEPOSIT' ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                    </TxIconWrapper>
+                    
+                    <TxDetails>
+                      <TxTitle>
+                        {tx.Type === 'DEPOSIT'
+                          ? 'Nạp tiền vào ví'
+                          : tx.Type === 'WITHDRAWAL'
+                          ? 'Rút tiền về ngân hàng'
+                          : tx.Type === 'TRANSFER_OUT'
+                          ? 'Chuyển tiền ra ngân hàng'
+                          : 'Giao dịch chuyển tiền'}
+                      </TxTitle>
+                      <TxTime>
+                        {tx.created_at
+                          ? new Date(tx.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' - ' + new Date(tx.created_at).toLocaleDateString('vi-VN')
+                          : ''}
+                      </TxTime>
+                    </TxDetails>
 
-                  <TxRight>
-                    <TxAmount $type={tx.type}>
-                      {tx.type === 'income' ? '+' : '-'}{formatVND(tx.amount)}
-                    </TxAmount>
-                    <Badge variant={tx.status === 'success' ? 'success' : 'warning'}>
-                      {tx.status === 'success' ? 'Thành công' : 'Đang xử lý'}
-                    </Badge>
-                  </TxRight>
-                </TransactionItem>
-              ))}
-            </TransactionList>
+                    <TxRight>
+                      <TxAmount $type={tx.Type === 'DEPOSIT' ? 'income' : 'expense'}>
+                        {tx.Type === 'DEPOSIT' ? '+' : '-'}{formatVND(tx.Amount)}
+                      </TxAmount>
+                      <Badge variant={tx.Status === 'COMPLETED' ? 'success' : tx.Status === 'PENDING' ? 'warning' : 'danger'}>
+                        {tx.Status === 'COMPLETED' ? 'Thành công' : tx.Status === 'PENDING' ? 'Đang xử lý' : 'Thất bại'}
+                      </Badge>
+                    </TxRight>
+                  </TransactionItem>
+                ))}
+              </TransactionList>
+            )}
           </Card>
         </RightCol>
       </DashboardGrid>
 
       {/* Deposit Dialog */}
-      <AppDialog open={isDepositOpen} onClose={() => setIsDepositOpen(false)} title="Nạp tiền vào ví">
-        <DepositContent>
-          <p>Chọn số tiền cần nạp từ ngân hàng liên kết của bạn.</p>
-          <DepositOptions>
-            {['100000', '200000', '500000', '1000000', '2000000', '5000000'].map((val) => (
-              <OptionButton 
-                key={val} 
-                $selected={depositAmount === val}
-                onClick={() => setDepositAmount(val)}
-              >
-                {formatVND(parseFloat(val))}
-              </OptionButton>
-            ))}
-          </DepositOptions>
+      <DepositModal 
+        open={isDepositOpen} 
+        onClose={() => setIsDepositOpen(false)} 
+        bankAccounts={bankAccounts} 
+        onSuccess={() => {
+          fetchTransactions();
+        }}
+        onOpenLinkBank={() => {
+          setIsDepositOpen(false);
+          addAlert(<>Vui lòng nhấp vào nút "Liên kết mới" ở thẻ Tài khoản liên kết.</>);
+        }}
+      />
 
-          <Input
-            id="custom-deposit-amount"
-            type="number"
-            label="Hoặc nhập số tiền khác"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
-          />
-
-          <DepositFooter>
-            <Button variant="ghost" onClick={() => setIsDepositOpen(false)}>Hủy bỏ</Button>
-            <Button variant="primary" onClick={handleDeposit}>Xác nhận nạp tiền</Button>
-          </DepositFooter>
-        </DepositContent>
-      </AppDialog>
+      {/* Withdraw Dialog */}
+      <WithdrawModal 
+        open={isWithdrawOpen} 
+        onClose={() => setIsWithdrawOpen(false)} 
+        bankAccounts={bankAccounts} 
+        onSuccess={() => {
+          fetchTransactions();
+        }}
+        onOpenLinkBank={() => {
+          setIsWithdrawOpen(false);
+          addAlert(<>Vui lòng nhấp vào nút "Liên kết mới" ở thẻ Tài khoản liên kết.</>);
+        }}
+      />
     </Container>
-  );
-}
-
-// PIN Verification Dialog Component
-function PinVerifyModal({ 
-  amount, 
-  receiver, 
-  message,
-  onVerifySuccess 
-}: { 
-  amount: number; 
-  receiver: string; 
-  message: string;
-  onVerifySuccess: () => void;
-}) {
-  const setAppDialog = useAppStore((state) => state.setAppDialog);
-  const [pinValue, setPinValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const formatVND = (num: number) => {
-    return num.toLocaleString('vi-VN') + ' đ';
-  };
-
-  const handleVerify = () => {
-    if (pinValue.length < 6) {
-      setError('Vui lòng nhập đủ 6 chữ số mã PIN');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-
-    // Simulate PIN check
-    setTimeout(() => {
-      setIsLoading(false);
-      onVerifySuccess();
-    }, 1500);
-  };
-
-  return (
-    <div>
-      <VerifyHeader>
-        <Shield size={32} color="var(--primary)" />
-        <h3>Xác thực giao dịch</h3>
-        <p>Bạn đang thực hiện chuyển tiền bảo mật</p>
-      </VerifyHeader>
-
-      <TxSummary>
-        <SummaryItem>
-          <span>Người nhận:</span>
-          <strong>{receiver}</strong>
-        </SummaryItem>
-        <SummaryItem>
-          <span>Số tiền chuyển:</span>
-          <AmountHighlight>{formatVND(amount)}</AmountHighlight>
-        </SummaryItem>
-        <SummaryItem>
-          <span>Lời nhắn:</span>
-          <span>{message}</span>
-        </SummaryItem>
-      </TxSummary>
-
-      <PinForm>
-        <label>Nhập mã PIN giao dịch để xác nhận</label>
-        <PinWrapper>
-          <PinInput
-            length={6}
-            value={pinValue}
-            onChange={(val) => setPinValue(val)}
-            mask={true}
-          />
-        </PinWrapper>
-        {error && <PinError>{error}</PinError>}
-      </PinForm>
-
-      <VerifyFooter>
-        <Button variant="ghost" onClick={() => setAppDialog(undefined)} disabled={isLoading}>
-          Hủy giao dịch
-        </Button>
-        <Button variant="primary" onClick={handleVerify} isLoading={isLoading}>
-          Xác nhận chuyển
-        </Button>
-      </VerifyFooter>
-    </div>
   );
 }
 
@@ -724,125 +615,20 @@ const TxAmount = styled.span<{ $type: 'income' | 'expense' }>`
   color: ${({ $type }) => ($type === 'income' ? 'var(--income)' : 'var(--expense)')};
 `;
 
-const DepositContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-
-  p {
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-    margin: 0;
-  }
-`;
-
-const DepositOptions = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-`;
-
-const OptionButton = styled.button<{ $selected: boolean }>`
-  padding: 10px;
-  font-size: var(--font-xs);
-  font-family: var(--font-family);
-  font-weight: var(--font-weight-medium);
-  border-radius: var(--radius-md);
-  border: 1px solid ${({ $selected }) => ($selected ? 'var(--primary)' : 'var(--border)')};
-  background-color: ${({ $selected }) => ($selected ? 'var(--primary-soft)' : 'var(--surface)')};
-  color: ${({ $selected }) => ($selected ? 'var(--primary)' : 'var(--text-primary)')};
-  cursor: pointer;
-  transition: all var(--transition-fast);
-
-  &:hover {
-    border-color: var(--primary);
-  }
-`;
-
-const DepositFooter = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-`;
-
-// Verify PIN styled components
-const VerifyHeader = styled.div`
+const EmptyTransactions = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-4);
   text-align: center;
-  margin-bottom: var(--space-4);
-
-  h3 {
-    margin: var(--space-2) 0 0 0;
-    color: var(--text-primary);
-  }
+  color: var(--text-muted);
+  gap: var(--space-2);
 
   p {
-    margin: 4px 0 0 0;
-    font-size: var(--font-xs);
-    color: var(--text-secondary);
+    margin: 0;
+    font-size: var(--font-sm);
   }
-`;
-
-const TxSummary = styled.div`
-  background-color: var(--surface-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-`;
-
-const SummaryItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-
-  strong {
-    color: var(--text-primary);
-  }
-`;
-
-const AmountHighlight = styled.strong`
-  color: var(--primary) !important;
-  font-size: var(--font-md);
-`;
-
-const PinForm = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-5);
-
-  label {
-    font-size: var(--font-xs);
-    font-weight: var(--font-weight-medium);
-    color: var(--text-primary);
-    text-align: center;
-  }
-`;
-
-const PinWrapper = styled.div`
-  display: flex;
-  justify-content: center;
-`;
-
-const PinError = styled.span`
-  font-size: var(--font-xs);
-  color: var(--danger);
-  text-align: center;
-  margin-top: 4px;
-`;
-
-const VerifyFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
 `;
 
 const AlertContent = styled.div`

@@ -35,4 +35,5 @@ func (m Module) Boostrap(r *gin.RouterGroup) {
 
 	r.POST("/transaction-pin", transactionPinService.Create)
 	r.POST("/confirm-transaction-pin", transactionPinService.ConfirmCreate)
+	r.GET("/me", authenticationService.Me)
 }

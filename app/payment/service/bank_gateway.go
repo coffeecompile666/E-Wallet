@@ -85,7 +85,7 @@ func (g *GatewayService) TransferToAccount(data BankTransferCommand) error {
 	}
 
 	// send event to message bus
-	g.Bus.Dispatch(BankTransferSucceed{TransferID: payment.TransferID, Status: model.SUCCESS})
+	g.Bus.Dispatch(BankTransferSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
 	return nil
 }
 
@@ -111,7 +111,7 @@ func (g *GatewayService) WithdrawalAccount(data WithdrawalCommand) error {
 			return shared.ErrWithdrawalToBankAccount
 		}
 
-		g.Bus.Dispatch(BankWithdrawalSucceed{TransferID: payment.TransferID, Status: model.SUCCESS})
+		g.Bus.Dispatch(BankWithdrawalSucceed{TransferID: data.TransferID, Status: model.SUCCESS})
 		return nil
 	})
 

@@ -10,9 +10,15 @@ import {
   CursorResponse,
 } from './types';
 
-export const getWalletByID = (walletID: number): Promise<ResponseWrapper<Wallet>> => {
+export const getWalletMe = (): Promise<ResponseWrapper<Wallet>> => {
   return handleCommonError(
-    request.get<ResponseWrapper<Wallet>>(`/wallet/${walletID}`).then((res) => res.data)
+    request.get<ResponseWrapper<Wallet>>('/wallet/me').then((res) => res.data)
+  );
+};
+
+export const getTransferByID = (id: number): Promise<ResponseWrapper<Transfer>> => {
+  return handleCommonError(
+    request.get<ResponseWrapper<Transfer>>(`/wallet/transfer/${id}`).then((res) => res.data)
   );
 };
 

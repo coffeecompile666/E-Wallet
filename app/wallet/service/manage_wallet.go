@@ -4,6 +4,7 @@ import (
 	"app/messages"
 	"app/shared"
 	model2 "app/wallet/model"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -20,23 +21,17 @@ func NewManageWalletService(db *gorm.DB, bus *messages.MessageBus) *ManageWallet
 	return &ManageWalletService{DB: db, Bus: bus}
 }
 
-func (mws *ManageWalletService) GetWalletByID(c *gin.Context) {
+func (mws *ManageWalletService) GetWalletByUserID(c *gin.Context) {
 	userID := c.MustGet(shared.ContextUserID).(uint)
-	walletID, err := validateWalletID(c.Param("wallet_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, shared.ErrBadRequest)
-		return
-	}
 
 	var wallet model2.Wallet
 
-	if err := mws.DB.First(&wallet, walletID).Error; err != nil {
-		c.JSON(http.StatusBadRequest, shared.ErrNotFound)
-		return
-	}
-
-	if wallet.OwnerID != userID {
-		c.JSON(http.StatusForbidden, shared.ErrForbidden)
+	if err := mws.DB.Where("owner_id", userID).First(&wallet).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, shared.ErrNotFound)
+			return
+		}
+		c.JSON(http.StatusInternalServerError, shared.ErrCommon)
 		return
 	}
 
@@ -87,6 +82,15 @@ func (mws *ManageWalletService) GetTransactions(c *gin.Context) {
 		End:   end,
 		Items: txs,
 	})
+}
+
+func (mws *ManageWalletService) GetTransferByID(c *gin.Context) {
+	transfer := &model2.Transfer{}
+	if err := mws.DB.First(transfer, c.Param("id")).Error; err != nil {
+		c.JSON(http.StatusBadRequest, shared.ErrNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, shared.Response[*model2.Transfer]{Data: transfer})
 }
 
 func validateStartEnd(startStr, endStr string) (uint, uint, error) {

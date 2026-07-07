@@ -199,7 +199,7 @@ func (h *WalletHandlerService) HandleTransferOut(transferID uint) error {
 
 		// wallet
 		var wallet *model2.Wallet
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transfer.WalletID).First(&wallet).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", transfer.WalletID).Preload("Account").First(&wallet).Error; err != nil {
 			return shared.ErrWalletNotFound
 		}
 

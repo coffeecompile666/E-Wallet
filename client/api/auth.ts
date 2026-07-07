@@ -10,6 +10,7 @@ import {
   ConfirmTXPINRequest,
   ResponseWrapper,
   TokenPair,
+  User,
 } from './types';
 
 export const signup = (data: SignupRequest): Promise<ResponseWrapper<number>> => {
@@ -69,5 +70,11 @@ export const createTransactionPin = (): Promise<ResponseWrapper<number>> => {
 export const confirmTransactionPin = (data: ConfirmTXPINRequest): Promise<void> => {
   return handleCommonError(
     request.post('/confirm-transaction-pin', data).then(() => undefined)
+  );
+};
+
+export const getMe = (): Promise<ResponseWrapper<User>> => {
+  return handleCommonError(
+    request.get<ResponseWrapper<User>>('/me').then((res) => res.data)
   );
 };

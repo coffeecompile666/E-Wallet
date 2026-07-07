@@ -31,9 +31,10 @@ func (w *Wallet) Bootstrap(g *gin.RouterGroup) {
 	withdrawalService := service.NewWithdrawalService(w.DB, w.Payment)
 	transferOutService := service.NewTransferOutService(w.DB, w.Bus, w.Payment)
 
-	g.GET("/wallet/:wallet_id", manageWalletService.GetWalletByID)
+	g.GET("/wallet/me", manageWalletService.GetWalletByUserID)
 	g.GET("/wallet/transaction", manageWalletService.GetTransactions)
 	g.POST("/wallet/deposit", depositService.Deposit)
 	g.POST("/wallet/withdrawal", withdrawalService.Withdraw)
 	g.POST("/wallet/transfer-out", transferOutService.TransferOut)
+	g.GET("/wallet/transfer/:id", manageWalletService.GetTransferByID)
 }

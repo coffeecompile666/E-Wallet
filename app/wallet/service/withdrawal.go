@@ -55,7 +55,7 @@ func (w *WithdrawalService) Withdraw(c *gin.Context) {
 			Clauses(clause.Locking{
 				Strength: "UPDATE",
 			}).
-			Where("id = ? AND user_id = ?", req.WalletID, userID).
+			Where("id = ? AND owner_id = ?", req.WalletID, userID).
 			First(&wallet).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return shared.ErrNotFound
