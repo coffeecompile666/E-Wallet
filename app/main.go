@@ -71,7 +71,7 @@ func main() {
 	walletModule.Init(v1)
 
 	notificationModule := notification.NewNotification(db, eventBus)
-	notificationModule.Init()
+	notificationModule.Init(v1)
 
 	addr := fmt.Sprintf(":%d", shared.Configs.Port)
 	err = router.Run(addr)

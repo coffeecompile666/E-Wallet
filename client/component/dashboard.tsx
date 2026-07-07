@@ -13,8 +13,8 @@ import {
   User, 
   ArrowRight,
   Clock,
-  CircleCheck,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from 'lucide-react';
 import { useAppStore } from '@/store/appStore';
 import { addAlert } from '@/help/addAlert';
@@ -24,8 +24,8 @@ import Input from '@/component/atomic/input';
 import Badge from '@/component/atomic/badge';
 import { logout } from '@/api/auth';
 import { getLinkedBankAccounts } from '@/api/payment';
-import { getTransactions } from '@/api/wallet';
-import { LinkedBankAccount, Transfer } from '@/api/types';
+import { getTransactions, getNotifications } from '@/api/wallet';
+import { LinkedBankAccount, Transfer, AppNotification } from '@/api/types';
 
 // Modular Subcomponents
 import BankAccountCard from './dashboard/BankAccountCard';
@@ -49,8 +49,8 @@ export default function Dashboard() {
   const [isLinkBankOpenForce, setIsLinkBankOpenForce] = useState(false); // Helper to open Link Bank Modal from Deposit Modal
   const [bankAccounts, setBankAccounts] = useState<LinkedBankAccount[]>([]);
   const [transactions, setTransactions] = useState<Transfer[]>([]);
-
-
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const formatVND = (num: number) => {
     return num.toLocaleString('vi-VN') + ' đ';
@@ -65,6 +65,15 @@ export default function Dashboard() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const res = await getNotifications();
+      setNotifications(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  };
+
   const fetchTransactions = async () => {
     const walletId = user?.walletId || (user as any)?.WalletID || (user as any)?.wallet_id;
     if (!walletId) return;
@@ -75,6 +84,8 @@ export default function Dashboard() {
         end: 20,
       });
       setTransactions(res.items || []);
+      // Also fetch notifications when transactions list updates
+      fetchNotifications();
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
     }
@@ -82,7 +93,18 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchBankAccounts();
+    fetchNotifications();
   }, []);
+
+  // Poll notifications and transactions every 10 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      fetchTransactions();
+      fetchNotifications();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     const walletId = user?.walletId || (user as any)?.WalletID || (user as any)?.wallet_id;
@@ -122,18 +144,54 @@ export default function Dashboard() {
           <LogoText>Tingting</LogoText>
         </LogoArea>
         
-        <UserMenu>
-          <UserIconWrapper>
-            <User size={18} />
-          </UserIconWrapper>
-          <UserInfo>
-            <UserName>{user.name}</UserName>
-            <UserEmail>{user.email}</UserEmail>
-          </UserInfo>
-          <LogoutButton onClick={handleLogout} title="Đăng xuất">
-            <LogOut size={18} />
-          </LogoutButton>
-        </UserMenu>
+        <RightNavbarSection>
+          {/* Notification Indicator */}
+          <NotificationWrapper>
+            <NotificationBellBtn onClick={() => setShowNotifications(!showNotifications)} title="Thông báo">
+              <Bell size={20} />
+              {notifications.length > 0 && <NotificationBadge>{notifications.length}</NotificationBadge>}
+            </NotificationBellBtn>
+            
+            {showNotifications && (
+              <NotificationDropdown>
+                <DropdownHeader>
+                  <h4>Thông báo của bạn</h4>
+                  {notifications.length > 0 && (
+                    <span onClick={() => setNotifications([])}>Xóa tất cả</span>
+                  )}
+                </DropdownHeader>
+                <DropdownList>
+                  {notifications.length === 0 ? (
+                    <EmptyNotifications>Chưa có thông báo mới</EmptyNotifications>
+                  ) : (
+                    notifications.map((notif, index) => {
+                      const notifId = notif.id || (notif as any).ID || index;
+                      return (
+                        <DropdownItem key={notifId}>
+                          <p>{notif.Content || (notif as any).content}</p>
+                          <span>{new Date(notif.CreatedAt || (notif as any).created_at).toLocaleString('vi-VN')}</span>
+                        </DropdownItem>
+                      );
+                    })
+                  )}
+                </DropdownList>
+              </NotificationDropdown>
+            )}
+          </NotificationWrapper>
+
+          <UserMenu>
+            <UserIconWrapper>
+              <User size={18} />
+            </UserIconWrapper>
+            <UserInfo>
+              <UserName>{user.name}</UserName>
+              <UserEmail>{user.email}</UserEmail>
+            </UserInfo>
+            <LogoutButton onClick={handleLogout} title="Đăng xuất">
+              <LogOut size={18} />
+            </LogoutButton>
+          </UserMenu>
+        </RightNavbarSection>
       </Navbar>
 
       <DashboardGrid>
@@ -336,6 +394,130 @@ const LogoText = styled.span`
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   letter-spacing: -0.5px;
+`;
+
+const RightNavbarSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+`;
+
+const NotificationWrapper = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const NotificationBellBtn = styled.button`
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background-color: var(--surface-secondary);
+    border-color: var(--primary-soft);
+    color: var(--primary);
+  }
+`;
+
+const NotificationBadge = styled.span`
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: var(--danger);
+  color: white;
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  padding: 2px 5px;
+  border-radius: 10px;
+  border: 2px solid var(--surface);
+`;
+
+const NotificationDropdown = styled.div`
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  overflow: hidden;
+`;
+
+const DropdownHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface-secondary);
+
+  h4 {
+    margin: 0;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+  }
+
+  span {
+    font-size: var(--font-xs);
+    color: var(--primary);
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+`;
+
+const DropdownList = styled.div`
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const DropdownItem = styled.div`
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: background-color var(--transition-fast);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: var(--surface-secondary);
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-xs);
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  span {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+`;
+
+const EmptyNotifications = styled.div`
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-xs);
 `;
 
 const UserMenu = styled.div`

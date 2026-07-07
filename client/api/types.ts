@@ -110,6 +110,7 @@ export interface TransferOutRequest {
   number: string;
   name: string;
   note: string;
+  tx_pin: string;
 }
 
 export interface TransferToUserRequest {
@@ -118,6 +119,13 @@ export interface TransferToUserRequest {
   amount: number;
   note?: string;
   tx_pin: string;
+}
+
+export interface AppNotification {
+  id: number;
+  CreatedAt: string;
+  Content: string;
+  UserID: number;
 }
 
 // Response Wrappers

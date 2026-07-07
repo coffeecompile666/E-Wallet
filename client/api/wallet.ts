@@ -7,6 +7,7 @@ import {
   WithdrawalRequest,
   TransferOutRequest,
   TransferToUserRequest,
+  AppNotification,
   ResponseWrapper,
   CursorResponse,
 } from './types';
@@ -56,5 +57,11 @@ export const transferOut = (data: TransferOutRequest): Promise<ResponseWrapper<n
 export const transferToUser = (data: TransferToUserRequest): Promise<ResponseWrapper<number>> => {
   return handleCommonError(
     request.post<ResponseWrapper<number>>('/wallet/transfer-to-user', data).then((res) => res.data)
+  );
+};
+
+export const getNotifications = (): Promise<ResponseWrapper<AppNotification[]>> => {
+  return handleCommonError(
+    request.get<ResponseWrapper<AppNotification[]>>('/notification').then((res) => res.data)
   );
 };
