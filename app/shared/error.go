@@ -59,4 +59,10 @@ var (
 	ErrWithdrawalToBankAccount            = Error{1046, 502, "withdrawal to bank account error"}
 	ErrTransactionPINNotSet               = Error{1047, 502, "transaction pin not set"}
 	ErrCannotTransferToSelf               = Error{1048, 502, "cannot transfer to self"}
+	ErrMerchantKeyRotate                  = Error{1049, 502, "merchant key rotate error"}
+	ErrMerchantNotAllowed                 = Error{1050, 502, "merchant not allowed"}
+	ErrMerchantNotFound                   = Error{1051, 502, "merchant not found"}
+	ErrMerchantInvalidPublicKey           = Error{1052, 502, "merchant invalid public key"}
+	ErrMerchantInvalidSignature           = Error{1053, 502, "merchant invalid signature"}
+	ErrMerchantOrderInvalidStatus         = Error{1054, 502, "merchant order invalid status"}
 )
